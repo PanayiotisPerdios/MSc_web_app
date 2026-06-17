@@ -28,7 +28,7 @@ from xml.etree.ElementTree import fromstring
 from bs4 import BeautifulSoup
 from types import SimpleNamespace
 from services.services import fetch_programmes_data
-from data.models import Programmes
+from data.models import Programme
 
 load_dotenv()
 
@@ -348,6 +348,46 @@ def load_programmes_from_api(api_data: dict, active_only: bool) -> list:
 
     return programmes
 
+def load_programmes_from_db(active_only: bool = False) -> list:
+
+    qs = Programme.objects.all()
+
+
+    if active_only:
+        qs = qs.filter(is_archived=False)
+
+    qs = qs.exclude(programme_url__isnull=True).exclude(programme_url="")
+
+    programmes = []
+
+    for row in qs:
+
+        study_modes = " / ".join(row.study_modes or [])
+
+        programmes.append({
+            "id":                   row.pk,
+            "url":                  row.programme_url.strip(),
+            "name_en":              row.name_en or "",
+            "name_gr":              row.name_gr or "",
+            "university":           row.university or "",
+            "university_gr":        row.university_gr or "",
+            "department":           row.department or "",
+            "city":                 row.city or "",
+            "topics":               row.topics or [],
+            "languages":            row.languages or [],
+            "ects":                 row.ects,
+            "semesters":            row.semesters,
+            "tuition":              row.tuition or "",
+            "study_modes":          study_modes,
+            "email":                row.email or "",
+            "apply_status_db":      row.application_status,
+            "is_archived":          row.is_archived,
+            "scholarship_offered":  row.scholarship,
+            "university_image_url": row.university_image_url or "",
+        })
+
+    return programmes
+
 # CSV loading
 
 def load_programmes(csv_path: str, active_only: bool) -> list:
@@ -415,14 +455,12 @@ def get_graph_config(model: str) -> dict:
         "verbose": False,
     }
 
-
 def import_scraper():
     try:
         from scrapegraphai.graphs import SmartScraperGraph
         return SmartScraperGraph
     except ImportError:
-        log.error("Run: pip install scrapegraphai playwright && playwright install chromium")
-        sys.exit(1)
+        raise RuntimeError("scrapegraphai not installed. Run: pip install scrapegraphai playwright && playwright install chromium")
 
 
 def strip_json_fences(text: str) -> str:
@@ -1234,12 +1272,13 @@ def parse_args():
     p.add_argument("--ids", type=str, default=None)
     p.set_defaults(active_only=True)
     return p.parse_args()
-'''
+
 # Main run
 def run_scraper(args):
 
-    api_data = fetch_programmes_data(args.api_url)
-    all_programmes = load_programmes_from_api(api_data, args.active_only)    
+    #api_data = fetch_programmes_data(args.api_url)
+    #all_programmes = load_programmes_from_api(api_data, args.active_only)
+    all_programmes = load_programmes_from_db(args.active_only)    
     programmes = all_programmes[args.offset:]
 
     if args.limit:
@@ -1297,4 +1336,3 @@ def run_scraper(args):
     rows = merge(all_programmes, all_p1, all_p2)
     export(rows)
     save_errors(all_p1, prog_map)
-'''

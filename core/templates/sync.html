@@ -223,6 +223,8 @@ td{padding:10px 10px;vertical-align:top;background:#fff}
 </div>
 
 <script>
+const SYNC_SECRET = "{{ sync_secret }}";
+
 document.getElementById("sync-btn").addEventListener("click", async () => {
 
     const btn = document.getElementById("sync-btn");
@@ -239,7 +241,8 @@ document.getElementById("sync-btn").addEventListener("click", async () => {
         const response = await fetch("/data/sync_programmes/", {
             method: "POST",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "X-Sync-Token": SYNC_SECRET
             }
         });
 
@@ -251,7 +254,7 @@ document.getElementById("sync-btn").addEventListener("click", async () => {
         btn.textContent = "✓ Synchronization Complete";
 
         status.textContent =
-            `Created: ${data.sync.created} | Updated: ${data.sync.updated} | Total: ${data.sync.total}`;
+            `Created: ${data.sync.created} | Updated: ${data.sync.updated} | Skipped ${data.sync.skipped}| Total: ${data.sync.total}`;
 
     } catch (err) {
 

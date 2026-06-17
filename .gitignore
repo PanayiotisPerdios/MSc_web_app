@@ -4,6 +4,18 @@ __pycache__/
 *.pyo
 *.pyd
 *.sqlite3
+db.sqlite3-journal
+
+# Python tooling/caches
+*.egg-info/
+.eggs/
+build/
+dist/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # Virtual environment
 venv/
@@ -13,6 +25,7 @@ venv/
 # Django stuff
 *.log
 local_settings.py
+celerybeat-schedule
 
 # Media / static builds (optional depending on setup)
 media/
@@ -21,14 +34,19 @@ staticfiles/
 # IDEs
 .vscode/
 .idea/
+*.swp
+*.swo
 
 # OS
 .DS_Store
+Thumbs.db
 
 # Scraper outputs (IMPORTANT for your project)
 results/
-*.csv
-*.json
 
 # Env files
 .env
+
+# Playwright
+.cache/
+ms-playwright/
