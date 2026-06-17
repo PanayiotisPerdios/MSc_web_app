@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSc Deadlines — Study in Greece</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'Inter',sans-serif;
+  font-size:13px;
+  background:#f4f4f2;
+  color:#1a1a1a;
+  min-height:100vh;
+}
+
+.hdr{
+  background:#fff;
+  border-bottom:1px solid #e5e5e3;
+  padding:0 28px;
+  height:52px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  position:sticky;
+  top:0;
+  z-index:100;
+}
+
+.hdr-logo{font-size:14px;font-weight:600}
+.hdr-logo span{color:#888;font-weight:400}
+
+.controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  padding:16px;
+  background:#fff;
+  border-bottom:1px solid #e5e5e3;
+  align-items:flex-end;
+}
+
+.controls .field{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  font-size:12px;
+}
+
+.controls input,
+.controls select{
+  padding:5px 10px;
+  border:1px solid #e5e5e3;
+  border-radius:6px;
+  font-size:12px;
+}
+
+.controls label{
+  font-size:11px;
+  color:#555;
+}
+
+.dashboard{
+  display:flex;
+  flex-direction:row;
+  gap:16px;
+  padding:40px;
+  justify-content:center;
+  align-items:stretch;
+  flex-wrap:wrap;
+}
+
+.card{
+  border:1px dashed #d0d0ce;
+  border-radius:12px;
+  padding:60px 48px;
+  text-align:center;
+  cursor:pointer;
+  max-width:440px;
+  width:100%;
+  background:#fff;
+  transition:all .15s ease;
+}
+
+.card:hover{
+  border-color:#888;
+  background:#fafaf9;
+}
+
+.icon{font-size:36px;margin-bottom:18px;opacity:.3}
+
+.card h2{font-size:15px;font-weight:600;margin-bottom:6px}
+
+.card p{font-size:12px;color:#bbb;line-height:1.6}
+
+.hint{
+  margin-top:6px;
+  color:#d0d0ce;
+  font-size:11px;
+}
+
+.run-btn{
+  margin-left:auto;
+  padding:6px 14px;
+  font-size:12px;
+  font-weight:600;
+  border-radius:6px;
+  border:1px solid #1a1a1a;
+  background:#1a1a1a;
+  color:#fff;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+
+.run-btn:hover{
+  background:#333;
+  border-color:#333;
+}
+
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-logo">
+    MSc Deadlines <span>— Study in Greece</span>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="field">
+    <label>Model</label>
+    <select name="model">
+      <option value="openai/gpt-4.1-nano">GPT-4.1 nano</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label>CSV</label>
+    <input type="text" name="csv" value="programmes-api_msc-programmes.csv">
+  </div>
+
+  <div class="field">
+    <label>Workers</label>
+    <input type="number" name="workers" value="3">
+  </div>
+
+  <div class="field">
+    <label>Limit</label>
+    <input type="number" name="limit">
+  </div>
+
+  <div class="field">
+    <label>Offset</label>
+    <input type="number" name="offset" value="0">
+  </div>
+
+  <label><input type="checkbox" name="resume"> Resume</label>
+  <label><input type="checkbox" name="pass2_only"> Pass 2 only</label>
+  <label><input type="checkbox" name="include_archived"> Include archived</label>
+  <label><input type="checkbox" name="missing_only"> Missing only</label>
+  
+  <button class="run-btn" id="run-scraper-btn">
+    ▶ Run Scraper
+  </button>
+</div>
+<script>
+/*
+document.getElementById("run-scraper-btn").addEventListener("click", async () => {
+
+    const scraperConfig = {
+        model: document.querySelector('[name="model"]').value,
+        csv: document.querySelector('[name="csv"]').value,
+        workers: Number(document.querySelector('[name="workers"]').value),
+        limit: document.querySelector('[name="limit"]').value
+          ? Number(document.querySelector('[name="limit"]').value)
+          : null,
+        offset: Number(document.querySelector('[name="offset"]').value),
+
+        resume: document.querySelector('[name="resume"]').checked,
+        pass2_only: document.querySelector('[name="pass2_only"]').checked,
+        include_archived: document.querySelector('[name="include_archived"]').checked,
+        missing_only: document.querySelector('[name="missing_only"]').checked
+    };
+
+    const response = await fetch("/post_scraper/", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            //"X-CSRFToken": getCookie("csrftoken")
+        },
+        body: JSON.stringify(scraperConfig)
+    });
+
+    const data = await response.json();
+    console.log(data);
+});
+*/
+</script>
+</body>
+</html>
