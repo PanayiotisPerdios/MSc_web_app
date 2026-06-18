@@ -67,7 +67,7 @@ def get_programmes_view(request):
         "university_image_url", "programme_url", "apply_url",
         "open_date", "deadline", "intake", "application_status",
         "notes", "portal", "found", "found_in_announcement",
-        "scrape_status", "pass2_status", "scraped_at",
+        "scrape_status", "pass2_status", "scraped_at", "atsig_url"
     )
     return JsonResponse({
         "status": "ok",

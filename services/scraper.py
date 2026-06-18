@@ -16,6 +16,7 @@ import argparse
 import requests
 import re
 import signal
+import threading
 import pdfplumber
 import io
 from datetime import datetime, timezone
@@ -29,6 +30,8 @@ from bs4 import BeautifulSoup
 from types import SimpleNamespace
 from services.services import fetch_programmes_data
 from data.models import Programme
+from django.utils.dateparse import parse_date, parse_datetime
+
 
 load_dotenv()
 
@@ -53,6 +56,7 @@ MAX_SUFFIX_ATTEMPTS = 50
 RETRY_DELAY     = 4
 REQUEST_DELAY   = 1.0
 DEFAULT_WORKERS = 3
+SCRAPE_TIMEOUT  = 90  # seconds — hard cap per scrape attempt so one stuck site can't hang the run
 
 _sitemap_cache: dict = {}
 
@@ -80,6 +84,7 @@ DATE_PATTERNS = [
     rf'\b\d{{4}}[/\-\.]\d{{1,2}}[/\-\.]\d{{1,2}}\b',           # 2025-06-15
     rf'\b\d{{1,2}}\s+{_MONTHS_EN}\s+\d{{4}}\b',                 # 15 June 2025
     rf'\b{_MONTHS_EN}\s+\d{{1,2}},?\s+\d{{4}}\b',               # June 15, 2025
+    rf'\b{_MONTHS_EN}\s+\d{{1,2}}\s*[-–—]\s*\d{{1,2}},?\s+\d{{4}}\b',  # June 8–26, 2026
     rf'\b\d{{1,2}}\s+{_MONTHS_EN_SHORT}\.?\s+\d{{4}}\b',        # 15 Jun 2025
     rf'\b\d{{1,2}}(?:st|nd|rd|th)\s+(?:of\s+)?{_MONTHS_EN}\s+\d{{4}}\b',  # 15th of June 2025
     rf'\b\d{{1,2}}\s+{_MONTHS_GR}\s+\d{{4}}\b',                 # 15 Ιουνίου 2025
@@ -201,6 +206,67 @@ DEADLINE_CSS_CLASSES = [
     "closing-date", "submission-deadline",
 ]
 
+def save_results_to_db(rows):
+    for row in rows:
+        try:
+            programme = Programme.objects.get(pk=row["id"])
+
+            programme.open_date = (
+                parse_date(row["open_date"])
+                if row.get("open_date")
+                else None
+            )
+
+            programme.deadline = (
+                parse_date(row["deadline"])
+                if row.get("deadline")
+                else None
+            )
+
+            programme.intake = row.get("intake", "") or ""
+            programme.apply_url = row.get("apply_url", "") or ""
+
+            programme.application_status = (
+                row.get("application_status")
+                or Programme.Status.NO_DATE
+            )
+
+            programme.notes = row.get("notes", "") or ""
+
+            programme.portal = row.get("portal", "") or ""
+
+            programme.requires_login = (
+                str(row.get("requires_login", "")).lower() == "true"
+            )
+
+            programme.found = row.get("found") == "yes"
+
+            programme.found_in_announcement = bool(
+                row.get("found_in_announcement")
+            )
+
+            programme.scrape_status = (
+                row.get("scrape_status")
+                or Programme.ScrapeStatus.SKIPPED
+            )
+
+            programme.pass2_status = (
+                row.get("pass2_status")
+                or Programme.Pass2Status.SKIPPED
+            )
+
+            if row.get("scraped_at"):
+                programme.scraped_at = parse_datetime(
+                    row["scraped_at"]
+                )
+
+            programme.save()
+
+        except Programme.DoesNotExist:
+            log.warning(f"Programme {row['id']} not found")
+        except Exception as e:
+            log.error(f"Failed saving programme {row['id']}: {e}")
+
 # Logging
 
 logging.basicConfig(
@@ -259,6 +325,7 @@ Rules:
 - has_dates_on_page must be true if ANY date related to applications or deadlines appears anywhere on the page, even in prose.
 - Today is June 2026. Only extract dates that are in 2026 or later. Ignore any dates from 2025 or earlier.
 - When multiple dates exist, prioritise dates labelled as application open, deadline, closing date, or submission — NOT results announcements, events, or publication dates.
+- Ignore the article's own posted/published date (shown near the title) unless it's the only date on the page. If the body text gives its own date or date range for applications, use that instead.
 """
 
 PASS2_PROMPT = """
@@ -284,6 +351,7 @@ Rules:
 - When multiple dates exist, prioritise dates labelled as application open, deadline, closing date, or submission — NOT results announcements, events, or publication dates.
 
 """
+
 # API load
 def load_programmes_from_api(api_data: dict, active_only: bool) -> list:
 
@@ -388,6 +456,8 @@ def load_programmes_from_db(active_only: bool = False) -> list:
 
     return programmes
 
+
+
 # CSV loading
 
 def load_programmes(csv_path: str, active_only: bool) -> list:
@@ -455,12 +525,14 @@ def get_graph_config(model: str) -> dict:
         "verbose": False,
     }
 
+
 def import_scraper():
     try:
         from scrapegraphai.graphs import SmartScraperGraph
         return SmartScraperGraph
     except ImportError:
-        raise RuntimeError("scrapegraphai not installed. Run: pip install scrapegraphai playwright && playwright install chromium")
+        log.error("Run: pip install scrapegraphai playwright && playwright install chromium")
+        sys.exit(1)
 
 
 def strip_json_fences(text: str) -> str:
@@ -505,6 +577,31 @@ def clean_result(raw: dict) -> dict:
     return cleaned
 
 
+def _run_with_timeout(func, timeout, *args, **kwargs):
+    """Run func in a daemon thread and give up after `timeout` seconds.
+
+    Uses a plain daemon thread (not ThreadPoolExecutor) so a stuck call
+    doesn't block process shutdown — concurrent.futures joins its worker
+    threads on interpreter exit, daemon threads don't.
+    """
+    box = {}
+
+    def target():
+        try:
+            box["value"] = func(*args, **kwargs)
+        except Exception as e:
+            box["error"] = e
+
+    t = threading.Thread(target=target, daemon=True)
+    t.start()
+    t.join(timeout)
+    if t.is_alive():
+        raise TimeoutError(f"Timed out after {timeout}s")
+    if "error" in box:
+        raise box["error"]
+    return box.get("value")
+
+
 def scrape_url(url: str, prompt: str, graph_config: dict, SmartScraperGraph) -> dict:
     last_error = None
     for attempt in range(1, MAX_RETRIES + 1):
@@ -512,7 +609,7 @@ def scrape_url(url: str, prompt: str, graph_config: dict, SmartScraperGraph) -> 
             return {"status": "cancelled", "error": "shutdown"}
         try:
             graph = SmartScraperGraph(prompt=prompt, source=url, config=graph_config)
-            raw = graph.run()
+            raw = _run_with_timeout(graph.run, SCRAPE_TIMEOUT)
 
             if isinstance(raw, dict):
                 raw = unwrap_content(raw)
@@ -627,7 +724,13 @@ def try_subpages(base_url: str, prompt: str, graph_config: dict, SmartScraperGra
 #RAW_HTML_HELPERS
 def fetch_html(url: str) -> str | None:
     try:
-        headers = {"User-Agent": "Mozilla/5.0 (compatible; MScScraper/1.0)"}
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                          "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9,el;q=0.8",
+            "Referer": url,
+        }
         response = requests.get(url, timeout=10, headers=headers)
         response.raise_for_status()
         return response.text
@@ -716,26 +819,38 @@ def find_announcement_links(html: str, base_url: str) -> list:
     
 def extract_pdf_text(url: str) -> str | None:
     try:
-        headers = {"User-Agent": "Mozilla/5.0 (compatible; MScScraper/1.0)"}
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                          "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "application/pdf,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9,el;q=0.8",
+            "Referer": url,
+        }
         response = requests.get(url, timeout=15, headers=headers)
         response.raise_for_status()
         with pdfplumber.open(io.BytesIO(response.content)) as pdf:
             text = "\n".join(
                 page.extract_text() or "" for page in pdf.pages
             )
-        return text[:3000] if text.strip() else None
+        return text[:8000] if text.strip() else None
     except Exception as e:
         log.warning(f"extract_pdf_text failed for {url}: {e}")
         return None
     
 def extract_docx_text(url: str) -> str | None:
     try:
-        headers = {"User-Agent": "Mozilla/5.0 (compatible; MScScraper/1.0)"}
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                          "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "*/*",
+            "Accept-Language": "en-US,en;q=0.9,el;q=0.8",
+            "Referer": url,
+        }
         response = requests.get(url, timeout=15, headers=headers)
         response.raise_for_status()
         doc = Document(io.BytesIO(response.content))
         text = "\n".join(para.text for para in doc.paragraphs if para.text.strip())
-        return text[:3000] if text.strip() else None
+        return text[:8000] if text.strip() else None
     except Exception as e:
         log.warning(f"extract_docx_text failed for {url}: {e}")
         return None
@@ -910,8 +1025,11 @@ def worker_pass1(args):
         log.info(f"  External portal detected: {apply_url}")
         result["external_portal"] = apply_url
 
-    # If no dates found, check document links (PDF/DOCX) on the page
-    if html and result.get("status") == "ok" and not (result.get("has_dates_on_page") is True and has_current_dates(result)):
+    # Always check document links (PDF/DOCX) on the page — the real deadline
+    # often lives only in a PDF, even when the page text already shows some
+    # other (e.g. news-post) date. Only overwrite result if the document
+    # itself yields a genuine current-year date.
+    if html and result.get("status") == "ok":
         doc_links = find_pdf_links(html, prog["url"])
         for doc_url in doc_links:
             log.info(f"  Trying document: {doc_url}")
@@ -924,33 +1042,68 @@ def worker_pass1(args):
                     f"data:text/plain,{doc_text}",
                     prompt, graph_config, SmartScraperGraph
                 )
-                if doc_result.get("has_dates_on_page") is True:
+                if doc_result.get("has_dates_on_page") is True and has_current_dates(doc_result):
                     log.info(f"  Found dates in document: {doc_url}")
                     doc_result["found_in_pdf"] = doc_url
                     result = doc_result
                     break
 
-    # If still no dates, follow announcement links on the page
-    if html and result.get("status") == "ok" and not (result.get("has_dates_on_page") is True and has_current_dates(result)):
+    # Always check announcement links on the page — the homepage's own result
+    # can satisfy has_current_dates with a hallucinated/vague date (e.g. the
+    # model inventing "2026-01-01" for a "for academic year 2026-2027"
+    # mention), which would otherwise block the real announcement/PDF from
+    # ever being checked. Only overwrite result if the announcement itself
+    # yields a genuine current-year date.
+    if html and result.get("status") == "ok":
         announcement_links = find_announcement_links(html, prog["url"])
         for ann_url in announcement_links:
             if _shutdown:
                 break
             log.info(f"  Trying announcement: {ann_url}")
             ann_result = scrape_url(ann_url, prompt, graph_config, SmartScraperGraph)
-            if ann_result.get("has_dates_on_page") is True:
+            if ann_result.get("has_dates_on_page") is True and has_current_dates(ann_result):
                 log.info(f"  Found dates in announcement: {ann_url}")
                 ann_result["found_in_announcement"] = ann_url
                 result = ann_result
                 break
+
+            # The announcement page itself may have no inline date text and
+            # only link out to a PDF/DOCX with the real call for applications
+            # (e.g. a "Call for Applications" page that's just download links).
+            ann_html = fetch_html(ann_url)
+            if ann_html:
+                ann_doc_links = find_pdf_links(ann_html, ann_url)
+                for doc_url in ann_doc_links:
+                    log.info(f"  Trying document from announcement: {doc_url}")
+                    if doc_url.lower().endswith(".docx"):
+                        doc_text = extract_docx_text(doc_url)
+                    else:
+                        doc_text = extract_pdf_text(doc_url)
+                    if doc_text:
+                        doc_result = scrape_url(
+                            f"data:text/plain,{doc_text}",
+                            prompt, graph_config, SmartScraperGraph
+                        )
+                        if doc_result.get("has_dates_on_page") is True and has_current_dates(doc_result):
+                            log.info(f"  Found dates in document from announcement: {doc_url}")
+                            doc_result["found_in_pdf"] = doc_url
+                            doc_result["found_in_announcement"] = ann_url
+                            result = doc_result
+                            break
+                if result.get("found_in_pdf"):
+                    break
             time.sleep(1.0)
 
-    # No useful date info found, check sitemap and subpages
+    # Always check sitemap/subpages when there's no apply link to fall back on —
+    # the homepage's own result can satisfy has_current_dates with a
+    # hallucinated date (e.g. mistaking the intake start month for an
+    # application open date), which would otherwise block this fallback from
+    # ever running. Only overwrite result if the subpage itself yields a
+    # genuine current-year date.
     if (result.get("status") == "ok"
-            and not (result.get("has_dates_on_page") is True and has_current_dates(result))
             and not result.get("apply_button_url")):
         sub = try_subpages(prog["url"], prompt, graph_config, SmartScraperGraph)
-        if sub.get("has_dates_on_page") is True:
+        if sub.get("has_dates_on_page") is True and has_current_dates(sub):
             result = sub
 
     result["prog_id"]    = prog["id"]
@@ -1000,7 +1153,8 @@ def run_pass1(programmes, graph_config, SmartScraperGraph, workers, resume_ids):
     ]
 
     results = []
-    with ThreadPoolExecutor(max_workers=workers) as pool:
+    pool = ThreadPoolExecutor(max_workers=workers)
+    try:
         futures = {pool.submit(worker_pass1, t): t for t in tasks}
         try:
             for future in as_completed(futures):
@@ -1023,7 +1177,10 @@ def run_pass1(programmes, graph_config, SmartScraperGraph, workers, resume_ids):
         except KeyboardInterrupt:
             for f in futures:
                 f.cancel()
-            pool.shutdown(wait=False, cancel_futures=True)
+    finally:
+        # wait=False so a still-running worker (e.g. stuck on a slow site)
+        # can never block process exit/shutdown.
+        pool.shutdown(wait=False, cancel_futures=True)
 
     return results
 
@@ -1035,6 +1192,11 @@ def _needs_pass2(r: dict) -> bool:
         return True
     # Dates found but deadline is still missing — apply page may have more detail
     if not r.get("application_deadline"):
+        return True
+    # Open date is just a bare year (e.g. "2026") with no month/day — too vague
+    # to be a real extracted date, apply page likely has the actual one
+    open_date = r.get("application_open_date")
+    if open_date and not DATE_RE.search(str(open_date)):
         return True
     return False
 
@@ -1062,7 +1224,8 @@ def run_pass2(pass1_results, prog_map, graph_config, SmartScraperGraph, workers,
     ]
 
     results = []
-    with ThreadPoolExecutor(max_workers=workers) as pool:
+    pool = ThreadPoolExecutor(max_workers=workers)
+    try:
         futures = {pool.submit(worker_pass2, t): t for t in tasks}
         try:
             for future in as_completed(futures):
@@ -1078,7 +1241,8 @@ def run_pass2(pass1_results, prog_map, graph_config, SmartScraperGraph, workers,
         except KeyboardInterrupt:
             for f in futures:
                 f.cancel()
-            pool.shutdown(wait=False, cancel_futures=True)
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
 
     return results
 
@@ -1225,6 +1389,17 @@ def export(rows):
     log.info(f"Errors  : {errors}")
     log.info(f"{'='*55}\n")
 
+    return {
+        "total":   total,
+        "created": found,
+        "skipped": missing,
+        "errors":  errors,
+        "changes": [
+            f"{'CREATED' if r['found'] == 'yes' else ('ERROR' if r['scrape_status'] == 'error' else 'SKIPPED')}: {r['name_en']}"
+            for r in rows
+        ],
+    }
+
 # File helpers
 
 def load_json_safe(path):
@@ -1273,7 +1448,6 @@ def parse_args():
     p.set_defaults(active_only=True)
     return p.parse_args()
 
-# Main run
 def run_scraper(args):
 
     #api_data = fetch_programmes_data(args.api_url)
@@ -1334,5 +1508,9 @@ def run_scraper(args):
     save_json(all_p2, PASS2_JSON)
 
     rows = merge(all_programmes, all_p1, all_p2)
+    save_results_to_db(rows)
+    stats = export(rows)
+
     export(rows)
     save_errors(all_p1, prog_map)
+    return stats

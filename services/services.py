@@ -72,6 +72,15 @@ def sync_programmes(api_response):
         university = department_data.get("university", {})
         department = department_data
 
+        department_data = item.get("department", {})
+        university = department_data.get("university", {})
+        department = department_data
+
+        atsig_url = (
+            f"https://apply.studyingreece.edu.gr/admin/"
+            f"#/programmes-api/msc-programmes/{item['id']}/show"
+        )
+
         obj, was_created = Programme.objects.update_or_create(
             id=item["id"],
              defaults={
@@ -91,6 +100,7 @@ def sync_programmes(api_response):
                 "scholarship":          item.get("scholarship_offered", False),
                 "university_image_url": university.get("image_url", ""),
                 "programme_url":        website,
+                "atsig_url":            atsig_url,
                 "application_status":   application_status,
             },
             create_defaults={
@@ -98,7 +108,6 @@ def sync_programmes(api_response):
                 "found":                 False,
                 "found_in_announcement": False,
                 "apply_url":             "",
-                "atsig_url":             "",
                 "notes":                 "",
                 "portal":                "",
                 "scrape_status":         Programme.ScrapeStatus.SKIPPED,
