@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Login — Study in Greece</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body {
+    font-family:'Inter',
+    sans-serif;
+    background:#f4f4f2;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    margin:0
+}
+
+.box {
+    background:#fff;
+    border:1px solid #e5e5e3;
+    border-radius:10px;
+    padding:32px;
+    width:320px
+}
+
+h1 {
+    font-size:15px;
+    font-weight:600;
+    margin-bottom:18px
+}
+
+.field {
+    margin-bottom:14px;
+    display:flex;
+    flex-direction:column;
+    gap:4px
+}
+
+label {
+    font-size:11px;
+    color:#555
+}
+
+input {
+    padding:7px 10px;
+    border:1px solid #e5e5e3;
+    border-radius:6px;
+    font-size:13px;
+    font-family:'Inter',sans-serif
+}
+
+button {
+    width:100%;
+    padding:9px;
+    border-radius:6px;
+    border:1px solid #1a1a1a;
+    background:#1a1a1a;
+    color:#fff;
+    font-weight:600;
+    cursor:pointer;
+    font-size:13px
+}
+
+.err {
+    color:#c0392b;
+    font-size:12px;
+    margin-bottom:12px
+}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Sign in</h1>
+  {% if form.errors %}<div class="err">Invalid username or password.</div>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <div class="field">
+      <label for="id_username">Username</label>
+      <input type="text" name="username" id="id_username" autofocus>
+    </div>
+    <div class="field">
+      <label for="id_password">Password</label>
+      <input type="password" name="password" id="id_password">
+    </div>
+    <button type="submit">Sign in</button>
+  </form>
+</div>
+</body>
+</html>

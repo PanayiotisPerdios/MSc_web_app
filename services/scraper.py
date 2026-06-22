@@ -211,17 +211,8 @@ def save_results_to_db(rows):
         try:
             programme = Programme.objects.get(pk=row["id"])
 
-            programme.open_date = (
-                parse_date(row["open_date"])
-                if row.get("open_date")
-                else None
-            )
-
-            programme.deadline = (
-                parse_date(row["deadline"])
-                if row.get("deadline")
-                else None
-            )
+            programme.open_date = row.get("open_date", "") or ""
+            programme.deadline = row.get("deadline", "") or ""
 
             programme.intake = row.get("intake", "") or ""
             programme.apply_url = row.get("apply_url", "") or ""

@@ -8,12 +8,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
 <style>
+* {
+  margin:0;
+  padding:0;
+  box-sizing:border-box
+}
+
 body {
-    font-family: 'Inter', sans-serif;
-    font-size: 13px;
-    background: #f4f4f2;
-    color: #1a1a1a;
-    min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  background: #f4f4f2;
+  color: #1a1a1a;
+  min-height: 100vh;
 }
 
 /* ── Header ── */
@@ -32,8 +38,10 @@ body {
 }
 
 .hdr-logo {
-    font-size: 14px;
-    font-weight: 600;
+  font-size:14px;
+  font-weight:600;
+  color:#1a1a1a;
+  letter-spacing:-0.02em
 }
 
 .hdr-logo span {
@@ -41,6 +49,31 @@ body {
     font-weight: 400;
 }
 
+
+.hdr-right {
+  margin-left:auto;
+  display:flex;
+  gap:8px;
+  align-items:center
+}
+
+.btn-logout {
+    font-family:'Inter',sans-serif;
+    font-size:12px;
+    font-weight:500;
+    padding:5px 12px;
+    border-radius:6px;
+    cursor:pointer;
+    border:1px solid #e0e0de;
+    background:#fff;
+    color:#555;
+    transition:all .12s;
+}
+
+.btn-logout:hover {
+  border-color:#bbb;
+  background:#fafafa
+}
 /* ── Controls ── */
 
 .controls {
@@ -335,8 +368,15 @@ body {
 <body>
 
 <header class="hdr">
-  <div class="hdr-logo">
-    MSc Deadlines <span>— Study in Greece</span>
+  <div>
+    <span class="hdr-logo">MSc Deadlines <span>— Study in Greece</span></span>
+  </div>
+  <div class="hdr-right">
+    <span style="font-size:11px;color:#aaa;">{{ user.username }}</span>
+    <form method="post" action="{% url 'logout' %}" style="margin:0;">
+      {% csrf_token %}
+      <button type="submit" class="btn-logout">Logout</button>
+    </form>
   </div>
 </header>
 
@@ -404,7 +444,11 @@ const statsEl   = document.getElementById('result-stats');
 const logWrap   = document.getElementById('log-wrap');
 const logBox    = document.getElementById('log-box');
 
-const SYNC_SECRET = "{{ sync_secret }}";
+function getCookie(name) {
+  const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return match ? match.pop() : '';
+}
+const csrftoken = getCookie('csrftoken');
 
 let timer = null;
 let startTime = null;
@@ -471,7 +515,7 @@ btn.addEventListener('click', async () => {
   logBox.innerHTML = '';
   statsEl.classList.remove('visible');
   logWrap.classList.add('visible');
-  setStatus('running', 'Scraper is running…');
+  setStatus('running', 'Syncing with API & running scraper…');
   startTimer();
  
   try {
@@ -479,7 +523,7 @@ btn.addEventListener('click', async () => {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          "X-Sync-Token": SYNC_SECRET
+          "X-CSRFToken": csrftoken
         },
       body: JSON.stringify(config),
     });
@@ -492,11 +536,15 @@ btn.addEventListener('click', async () => {
       btn.className = 'run-btn failed';
       btn.textContent = '✕ Failed';
     } else {
-      const result = data.sync || data.result || {};
+      const result = data.result || {};
       setStatus('done', `Done — ${result.total ?? 0} programmes processed in ${Math.floor((Date.now() - startTime) / 1000)}s`);
       btn.className = 'run-btn done';
       btn.textContent = '✓ Complete';
       showStats(result);
+
+      if (data.sync) {
+        appendLog([`SYNCED: ${data.sync.created} created, ${data.sync.updated} updated, ${data.sync.skipped} skipped`]);
+      }
       if (result.changes?.length) {
         appendLog(result.changes);
       }

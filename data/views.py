@@ -1,33 +1,48 @@
 import json
-from django.conf import settings
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from services.services import fetch_programmes_data
-from services.scraper import run_scraper
-from types import SimpleNamespace
-from dotenv import load_dotenv
 import os
+from types import SimpleNamespace
+
+import requests
+from dotenv import load_dotenv
+
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST, require_GET
+
 from data.models import Programme
-from services.services import sync_programmes
-import requests 
-from django.shortcuts import render
+from services.scraper import run_scraper
+from services.services import fetch_programmes_data, sync_programmes
 
 load_dotenv()
-SYNC_SECRET = os.getenv("SYNC_SECRET")
 API_URL = os.getenv("API_URL")
 
-@csrf_exempt
+def is_staff_user(user):
+    return user.is_authenticated and user.is_staff
+
+
+@login_required
+@user_passes_test(is_staff_user)
+@require_POST
 def post_scraper(request):
 
-    if request.method != "POST":
-        return JsonResponse({"error": "POST required"},status=405)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON body"}, status=400)
     
-    token = request.headers.get("X-Sync-Token", "")
-
-    if token != SYNC_SECRET:
-        return JsonResponse({"error": "Unauthorized"}, status=401)
-
-    data = json.loads(request.body)
+    try:
+        api_data = fetch_programmes_data(API_URL)
+        sync_result = sync_programmes(api_data)
+    except requests.HTTPError as e:
+        return JsonResponse({
+            "status": "error",
+            "message": f"Sync failed: API request failed: {e}",
+        }, status=502)
+    except Exception as e:
+        return JsonResponse({
+            "status": "error",
+            "message": f"Sync failed: {e}",
+        }, status=500)
 
     data.setdefault("workers", 3)
     data.setdefault("offset", 0)
@@ -44,21 +59,25 @@ def post_scraper(request):
     args = SimpleNamespace(**data)
 
     try:
-        result = run_scraper(args)
+        scrape_result = run_scraper(args)
 
         return JsonResponse({
             "status": "success",
-            "result": result
+            "sync": sync_result,
+            "result": scrape_result,
         })
 
     except Exception as e:
 
         return JsonResponse({
             "status": "error",
-            "message": str(e)
+            "message": str(e),
+            "sync": sync_result,
         }, status=500)
 
-@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user)
+@require_GET
 def get_programmes_view(request):
     programmes = Programme.objects.values(
         "id", "name_en", "name_gr", "university", "university_gr",
@@ -75,26 +94,17 @@ def get_programmes_view(request):
         "data": list(programmes),
     })
 
-@csrf_exempt
+@login_required
+@user_passes_test(is_staff_user)
+@require_POST
 def sync_programmes_view(request):
-
-    if request.method != "POST":
-        return JsonResponse({"error": "POST required"}, status=405)
-    
-    token = request.headers.get("X-Sync-Token", "")
-
-    if token != SYNC_SECRET:
-        return JsonResponse({"error": "Unauthorized"}, status=401)
 
     try:
         api_data = fetch_programmes_data(API_URL)
-        result   = sync_programmes(api_data)
+        result = sync_programmes(api_data)
     except requests.HTTPError as e:
         return JsonResponse({"error": f"API request failed: {e}"}, status=502)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
-    return JsonResponse({
-        "status": "ok",
-        "sync": result
-    })
+    return JsonResponse({"status": "ok", "sync": result})
