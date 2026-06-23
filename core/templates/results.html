@@ -575,6 +575,7 @@ td {
       <button type="submit" class="btn-logout">Logout</button>
     </form>
     <button class="btn" id="export-btn">Export CSV</button>
+    <button class="btn" id="export-json-btn">Export JSON</button>
   </div>
 </header>
 
@@ -901,6 +902,15 @@ function exportCSV() {
   a.download = 'msc_deadlines.csv';
   a.click();
 }
+
+function exportJSON() {
+  if (!filtered.length) return;
+  const blob = new Blob([JSON.stringify(filtered, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'msc_deadlines.json';
+  a.click();
+}
  
 // ── Event listeners ───────────────────────────────────────────────────────
  
@@ -913,6 +923,7 @@ document.getElementById('f-sort').addEventListener('change', e => {
   applyFilters();
 });
 document.getElementById('export-btn').addEventListener('click', exportCSV);
+document.getElementById('export-json-btn').addEventListener('click', exportJSON);
  
 document.querySelectorAll('thead th[data-col]').forEach(th => {
   th.addEventListener('click', () => {

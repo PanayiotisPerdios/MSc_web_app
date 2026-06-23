@@ -37,9 +37,10 @@ load_dotenv()
 
 # Configuration
 
-DEFAULT_CSV     = "programmes-api_msc-programmes.csv"
+DEFAULT_CSV     = "eng-prog-22-06.csv"
 DEFAULT_MODEL   = "openai/gpt-4.1-nano"
-OUTPUT_DIR      = Path("results")
+BASE_DIR  = Path(__file__).resolve().parent
+OUTPUT_DIR = BASE_DIR / "results"
 OUTPUT_DIR.mkdir(exist_ok=True)
 ERRORS_JSON = OUTPUT_DIR / "errors.json"
 
@@ -65,6 +66,7 @@ DOMAIN_ANNOUNCEMENT_HUBS = {
 }
 
 _hub_cache: dict = {}
+_hub_cache_lock = threading.Lock()
 
 # ---- date regex patterns ----
 
@@ -443,6 +445,19 @@ def load_programmes_from_db(active_only: bool = False) -> list:
             "is_archived":          row.is_archived,
             "scholarship_offered":  row.scholarship,
             "university_image_url": row.university_image_url or "",
+            "existing_open_date":       row.open_date or "",
+            "existing_deadline":        row.deadline or "",
+            "existing_intake":          row.intake or "",
+            "existing_apply_url":       row.apply_url or "",
+            "existing_application_status": row.application_status or "",
+            "existing_notes":           row.notes or "",
+            "existing_portal":          row.portal or "",
+            "existing_requires_login":  row.requires_login,
+            "existing_found":           row.found,
+            "existing_found_in_announcement": row.found_in_announcement,
+            "existing_scrape_status":   row.scrape_status or "",
+            "existing_pass2_status":    row.pass2_status or "",
+            "existing_scraped_at":      row.scraped_at.isoformat() if row.scraped_at else "",
         })
 
     return programmes
@@ -954,6 +969,17 @@ def has_current_dates(result: dict) -> bool:
             return True
     return False
 
+def _has_specific_date(result: dict) -> bool:
+    """True if the result already has a real, specific date (matches DATE_RE)
+    in deadline or open_date — not just a bare/vague year. Used to skip the
+    expensive document/announcement/subpage fallbacks once a genuine date has
+    already been found, so they only run for the vague/hallucinated cases."""
+    for field in ("application_deadline", "application_open_date"):
+        v = result.get(field)
+        if v and DATE_RE.search(str(v)):
+            return True
+    return False
+
 def worker_pass1(args):
     idx, total, prog, prompt, graph_config, SmartScraperGraph = args
     if _shutdown:
@@ -968,29 +994,35 @@ def worker_pass1(args):
     prog_domain = urlparse(prog["url"]).netloc
     hub_url = next((v for k, v in DOMAIN_ANNOUNCEMENT_HUBS.items() if k in prog_domain), None)
     if hub_url:
-        if hub_url in _hub_cache:
-            log.info(f"  Hub cache hit: {hub_url}")
-            result = _hub_cache[hub_url].copy()
-            result["prog_id"] = prog["id"]
-            result["scraped_at"] = now_utc()
-            result["found_in_announcement"] = hub_url
-            return result
-        log.info(f"  Domain hub: {hub_url}")
-        hub_html = fetch_html(hub_url)
-        hub_url_to_scrape = hub_url
-        if hub_html:
-            ann_links = find_announcement_links(hub_html, hub_url)
-            if ann_links:
-                log.info(f"  Following hub announcement: {ann_links[0]}")
-                hub_url_to_scrape = ann_links[0]
-        hub_result = scrape_url(hub_url_to_scrape, prompt, graph_config, SmartScraperGraph)
-        if hub_result.get("has_dates_on_page") is True:
-            hub_result["found_in_announcement"] = hub_url_to_scrape
-            _hub_cache[hub_url] = hub_result
-            result = hub_result.copy()
-            result["prog_id"] = prog["id"]
-            result["scraped_at"] = now_utc()
-            return result
+        # Serialize on a per-process lock so concurrent workers for the same
+        # domain hub (e.g. multiple EAP programmes finishing pass1 at nearly
+        # the same time) don't each independently re-scrape and race to
+        # populate _hub_cache — only the first thread in does the real
+        # scrape; everyone else just waits and reuses its cached result.
+        with _hub_cache_lock:
+            if hub_url in _hub_cache:
+                log.info(f"  Hub cache hit: {hub_url}")
+                result = _hub_cache[hub_url].copy()
+                result["prog_id"] = prog["id"]
+                result["scraped_at"] = now_utc()
+                result["found_in_announcement"] = hub_url
+                return result
+            log.info(f"  Domain hub: {hub_url}")
+            hub_html = fetch_html(hub_url)
+            hub_url_to_scrape = hub_url
+            if hub_html:
+                ann_links = find_announcement_links(hub_html, hub_url)
+                if ann_links:
+                    log.info(f"  Following hub announcement: {ann_links[0]}")
+                    hub_url_to_scrape = ann_links[0]
+            hub_result = scrape_url(hub_url_to_scrape, prompt, graph_config, SmartScraperGraph)
+            if hub_result.get("has_dates_on_page") is True:
+                hub_result["found_in_announcement"] = hub_url_to_scrape
+                _hub_cache[hub_url] = hub_result
+                result = hub_result.copy()
+                result["prog_id"] = prog["id"]
+                result["scraped_at"] = now_utc()
+                return result
 
     # Extract and filter dates, then send structured list to AI
     if html:
@@ -1016,11 +1048,13 @@ def worker_pass1(args):
         log.info(f"  External portal detected: {apply_url}")
         result["external_portal"] = apply_url
 
-    # Always check document links (PDF/DOCX) on the page — the real deadline
-    # often lives only in a PDF, even when the page text already shows some
-    # other (e.g. news-post) date. Only overwrite result if the document
-    # itself yields a genuine current-year date.
-    if html and result.get("status") == "ok":
+    # Check document links (PDF/DOCX) on the page — the real deadline often
+    # lives only in a PDF, even when the page text already shows some other
+    # (e.g. news-post) date. Skipped if we already have a genuine specific
+    # date (not just a vague/hallucinated bare year) — only run this
+    # (expensive) fallback for the vague case. Only overwrite result if the
+    # document itself yields a genuine current-year date.
+    if html and result.get("status") == "ok" and not _has_specific_date(result):
         doc_links = find_pdf_links(html, prog["url"])
         for doc_url in doc_links:
             log.info(f"  Trying document: {doc_url}")
@@ -1039,13 +1073,14 @@ def worker_pass1(args):
                     result = doc_result
                     break
 
-    # Always check announcement links on the page — the homepage's own result
-    # can satisfy has_current_dates with a hallucinated/vague date (e.g. the
+    # Check announcement links on the page — the homepage's own result can
+    # satisfy has_current_dates with a hallucinated/vague date (e.g. the
     # model inventing "2026-01-01" for a "for academic year 2026-2027"
     # mention), which would otherwise block the real announcement/PDF from
-    # ever being checked. Only overwrite result if the announcement itself
-    # yields a genuine current-year date.
-    if html and result.get("status") == "ok":
+    # ever being checked. Skipped if we already have a genuine specific date.
+    # Only overwrite result if the announcement itself yields a genuine
+    # current-year date.
+    if html and result.get("status") == "ok" and not _has_specific_date(result):
         announcement_links = find_announcement_links(html, prog["url"])
         for ann_url in announcement_links:
             if _shutdown:
@@ -1085,14 +1120,15 @@ def worker_pass1(args):
                     break
             time.sleep(1.0)
 
-    # Always check sitemap/subpages when there's no apply link to fall back on —
-    # the homepage's own result can satisfy has_current_dates with a
-    # hallucinated date (e.g. mistaking the intake start month for an
-    # application open date), which would otherwise block this fallback from
-    # ever running. Only overwrite result if the subpage itself yields a
-    # genuine current-year date.
+    # Check sitemap/subpages when there's no apply link to fall back on — the
+    # homepage's own result can satisfy has_current_dates with a hallucinated
+    # date (e.g. mistaking the intake start month for an application open
+    # date), which would otherwise block this fallback from ever running.
+    # Skipped if we already have a genuine specific date. Only overwrite
+    # result if the subpage itself yields a genuine current-year date.
     if (result.get("status") == "ok"
-            and not result.get("apply_button_url")):
+            and not result.get("apply_button_url")
+            and not _has_specific_date(result)):
         sub = try_subpages(prog["url"], prompt, graph_config, SmartScraperGraph)
         if sub.get("has_dates_on_page") is True and has_current_dates(sub):
             result = sub
@@ -1118,7 +1154,31 @@ def worker_pass2(args):
             apply_url = sitemap_hits[0]
 
     log.info(f"[Pass2 {idx}/{total}] {apply_url[:80]}")
-    result = scrape_url(apply_url, prompt, graph_config, SmartScraperGraph)
+
+    # The apply link itself is sometimes a direct PDF/DOCX download rather than
+    # a normal page (e.g. "apply here" pointing straight at a call-for-
+    # applications PDF). Playwright can't navigate to a file download — it
+    # throws "Page.goto: Download is starting" every time — so extract the
+    # text directly instead of handing the URL to scrape_url.
+    apply_lower = apply_url.lower()
+    if apply_lower.endswith(".pdf") or apply_lower.endswith(".docx"):
+        doc_text = (
+            extract_docx_text(apply_url) if apply_lower.endswith(".docx")
+            else extract_pdf_text(apply_url)
+        )
+        if doc_text:
+            result = scrape_url(f"data:text/plain,{doc_text}", prompt, graph_config, SmartScraperGraph)
+            if result.get("status") == "ok" and result.get("has_dates_on_page") is True and has_current_dates(result):
+                result["found_in_pdf"] = apply_url
+        else:
+            result = {"status": "error", "error": f"Could not extract text from document: {apply_url}"}
+    elif apply_lower.endswith((".rtf", ".doc", ".xls", ".xlsx", ".ppt", ".pptx")):
+        # Unsupported binary format — never hand this to Playwright, it
+        # will always throw "Download is starting" on every retry.
+        result = {"status": "error", "error": f"Unsupported document type, skipped: {apply_url}"}
+    else:
+        result = scrape_url(apply_url, prompt, graph_config, SmartScraperGraph)
+
     result["prog_id"]    = prog_id
     result["apply_url"]  = apply_url
     result["source_url"] = source_url
@@ -1293,10 +1353,16 @@ def merge(programmes, pass1, pass2):
         p1  = p1_map.get(pid, {})
         p2  = p2_map.get(pid, {})
 
-        # Prefer PDF-sourced dates as they are more reliable than HTML
-        if p1.get("found_in_pdf"):
-            deadline  = p1.get("application_deadline") or p2.get("application_deadline")
-            open_date = p1.get("application_open_date") or p2.get("application_open_date")
+        # Prefer PDF-sourced dates as they are more reliable than HTML.
+        # Either pass can be the one that found the PDF (pass2 now extracts
+        # apply-link PDFs/DOCX too), so check both.
+        if p1.get("found_in_pdf") or p2.get("found_in_pdf"):
+            if p1.get("found_in_pdf"):
+                deadline  = p1.get("application_deadline") or p2.get("application_deadline")
+                open_date = p1.get("application_open_date") or p2.get("application_open_date")
+            else:
+                deadline  = p2.get("application_deadline") or p1.get("application_deadline")
+                open_date = p2.get("application_open_date") or p1.get("application_open_date")
         else:
             deadline  = max(
                 [p1.get("application_deadline"), p2.get("application_deadline")],
@@ -1316,6 +1382,21 @@ def merge(programmes, pass1, pass2):
             extracted = extract_date_from_notes(notes)
             if extracted:
                 deadline = extracted
+
+        if date_relevance_score(deadline or "") < date_relevance_score(prog.get("existing_deadline") or ""):
+            deadline = prog.get("existing_deadline") or deadline
+        elif not deadline:
+            deadline = prog.get("existing_deadline") or ""
+
+        if date_relevance_score(open_date or "") < date_relevance_score(prog.get("existing_open_date") or ""):
+            open_date = prog.get("existing_open_date") or open_date
+        elif not open_date:
+            open_date = prog.get("existing_open_date") or ""
+
+        intake     = intake or prog.get("existing_intake") or ""
+        app_status = app_status or prog.get("existing_application_status") or "not_mentioned"
+        apply_url  = apply_url or prog.get("existing_apply_url") or ""
+        notes      = notes or prog.get("existing_notes") or ""
 
         found = "yes" if (deadline or open_date) else "no"
         found_in_announcement = p1.get("found_in_announcement") or ""
@@ -1404,8 +1485,10 @@ def load_json_safe(path):
 
 
 def save_json(data, path):
-    with open(path, "w", encoding="utf-8") as f:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
+    tmp.replace(path)  # atomic on POSIX
     log.info(f"Saved {len(data)} records -> {path}")
 
 def save_errors(pass1_results, prog_map):
@@ -1446,6 +1529,7 @@ def run_scraper(args):
     all_programmes = load_programmes_from_db(args.active_only)    
     programmes = all_programmes[args.offset:]
 
+    
     if args.limit:
         programmes = programmes[:args.limit]
     prog_map = {p["id"]: p for p in all_programmes}
@@ -1479,6 +1563,8 @@ def run_scraper(args):
     else:
         target_ids = set()
 
+    scope_ids = {p["id"] for p in programmes}
+
     if not args.pass2_only:
         new_p1 = run_pass1(programmes, graph_config, SmartScraperGraph, args.workers, resume_ids)
         all_p1 = existing_p1 + new_p1
@@ -1499,7 +1585,14 @@ def run_scraper(args):
     save_json(all_p2, PASS2_JSON)
 
     rows = merge(all_programmes, all_p1, all_p2)
-    save_results_to_db(rows)
+
+
+    if args.limit or args.offset or args.ids or args.missing_only:
+        rows_to_save = [r for r in rows if r["id"] in scope_ids]
+    else:
+        rows_to_save = rows
+
+    save_results_to_db(rows_to_save)
     stats = export(rows)
 
     export(rows)
