@@ -213,20 +213,26 @@ def save_results_to_db(rows):
         try:
             programme = Programme.objects.get(pk=row["id"])
 
-            programme.open_date = row.get("open_date", "") or ""
-            programme.deadline = row.get("deadline", "") or ""
+            if row.get("open_date"):
+                programme.open_date = row["open_date"]
 
-            programme.intake = row.get("intake", "") or ""
-            programme.apply_url = row.get("apply_url", "") or ""
+            if row.get("deadline"):
+                programme.deadline = row["deadline"]
 
-            programme.application_status = (
-                row.get("application_status")
-                or Programme.Status.NO_DATE
-            )
+            if row.get("intake"):
+                programme.intake = row["intake"]
 
-            programme.notes = row.get("notes", "") or ""
+            if row.get("apply_url"):
+                programme.apply_url = row["apply_url"]
 
-            programme.portal = row.get("portal", "") or ""
+            if row.get("application_status"):
+                programme.application_status = row["application_status"]
+
+            if row.get("notes"):
+                programme.notes = row["notes"]
+
+            if row.get("portal"):
+                programme.portal = row["portal"]
 
             programme.requires_login = (
                 str(row.get("requires_login", "")).lower() == "true"
@@ -442,6 +448,7 @@ def load_programmes_from_db(active_only: bool = False) -> list:
             "study_modes":          study_modes,
             "email":                row.email or "",
             "apply_status_db":      row.application_status,
+            "atsig_url":            row.atsig_url or "",
             "is_archived":          row.is_archived,
             "scholarship_offered":  row.scholarship,
             "university_image_url": row.university_image_url or "",
@@ -1419,6 +1426,7 @@ def merge(programmes, pass1, pass2):
             "scholarship":         "yes" if prog["scholarship_offered"] else "no",
             "university_image_url":prog["university_image_url"],
             "programme_url":       prog["url"],
+            "atsig_url":           prog.get("atsig_url", ""),
             "open_date":           open_date or "",
             "deadline":            deadline or "",
             "intake":              intake or "",
@@ -1595,6 +1603,30 @@ def run_scraper(args):
     save_results_to_db(rows_to_save)
     stats = export(rows)
 
-    export(rows)
+    scoped_rows = rows_to_save
+    stats["scope_total"]   = len(scoped_rows)
+    stats["scope_found"]   = sum(1 for r in scoped_rows if r["found"] == "yes")
+    stats["scope_skipped"] = sum(1 for r in scoped_rows if r["found"] == "no" and r["scrape_status"] != "error")
+    stats["scope_errors"]  = sum(1 for r in scoped_rows if r["scrape_status"] == "error")
+    stats["changes"] = [
+        f"{'CREATED' if r['found'] == 'yes' else ('ERROR' if r['scrape_status'] == 'error' else 'SKIPPED')}: {r['name_en']}"
+        for r in scoped_rows
+    ]
+    stats["rows"] = [
+        {
+            "name_en":      r["name_en"],
+            "university":   r["university"],
+            "open_date":    r["open_date"],
+            "deadline":     r["deadline"],
+            "intake":       r["intake"],
+            "status":       r["application_status"],
+            "apply_url":    r["apply_url"],
+            "found":        r["found"],
+            "scrape_status": r["scrape_status"],
+            "atsig_url":     r.get("atsig_url", ""),
+        }
+        for r in scoped_rows
+    ]
+
     save_errors(all_p1, prog_map)
     return stats

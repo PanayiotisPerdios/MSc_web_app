@@ -1,369 +1,16 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MSc Deadlines — Study in Greece</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MSc Deadlines — Study in Greece</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
-<style>
-* {
-  margin:0;
-  padding:0;
-  box-sizing:border-box
-}
+  <link rel="stylesheet" href="{% static 'core/css/scraper.css' %}">
 
-body {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  background: #f4f4f2;
-  color: #1a1a1a;
-  min-height: 100vh;
-}
-
-/* ── Header ── */
-
-.hdr {
-    background: #fff;
-    border-bottom: 1px solid #e5e5e3;
-    padding: 0 28px;
-    height: 52px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.hdr-logo {
-  font-size:14px;
-  font-weight:600;
-  color:#1a1a1a;
-  letter-spacing:-0.02em
-}
-
-.hdr-logo span {
-    color: #888;
-    font-weight: 400;
-}
-
-
-.hdr-right {
-  margin-left:auto;
-  display:flex;
-  gap:8px;
-  align-items:center
-}
-
-.btn-logout {
-    font-family:'Inter',sans-serif;
-    font-size:12px;
-    font-weight:500;
-    padding:5px 12px;
-    border-radius:6px;
-    cursor:pointer;
-    border:1px solid #e0e0de;
-    background:#fff;
-    color:#555;
-    transition:all .12s;
-}
-
-.btn-logout:hover {
-  border-color:#bbb;
-  background:#fafafa
-}
-/* ── Controls ── */
-
-.controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 16px 28px;
-    background: #fff;
-    border-bottom: 1px solid #e5e5e3;
-    align-items: flex-end;
-}
-
-.field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.field label {
-    font-size: 11px;
-    color: #555;
-}
-
-.controls input,
-.controls select {
-    padding: 5px 10px;
-    border: 1px solid #e5e5e3;
-    border-radius: 6px;
-    font-size: 12px;
-    font-family: 'Inter', sans-serif;
-    background: #f8f8f7;
-    outline: none;
-    transition: border-color 0.12s;
-}
-
-.controls input:focus,
-.controls select:focus {
-    border-color: #999;
-    background: #fff;
-}
-
-.controls input[type="checkbox"] {
-    width: 14px;
-    height: 14px;
-    margin-right: 4px;
-    cursor: pointer;
-}
-
-.check-label {
-    display: flex;
-    align-items: center;
-    font-size: 12px;
-    color: #555;
-    cursor: pointer;
-    gap: 4px;
-    padding-bottom: 2px;
-}
-
-/* ── Run Button ── */
-
-.run-btn {
-    margin-left: auto;
-    padding: 7px 18px;
-    font-size: 12px;
-    font-weight: 600;
-    border-radius: 6px;
-    border: 1px solid #1a1a1a;
-    background: #1a1a1a;
-    color: #fff;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    font-family: 'Inter', sans-serif;
-    white-space: nowrap;
-}
-
-.run-btn:hover:not(:disabled) {
-    background: #333;
-    border-color: #333;
-}
-
-.run-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.run-btn.running {
-    background: #c07a00;
-    border-color: #c07a00;
-}
-
-.run-btn.done {
-    background: #1a7a4a;
-    border-color: #1a7a4a;
-}
-
-.run-btn.failed {
-    background: #c0392b;
-    border-color: #c0392b;
-}
-
-/* ── Status Bar ── */
-
-#status-bar {
-    display: none;
-    padding: 10px 28px;
-    background: #fff8ee;
-    border-bottom: 1px solid #f0ddb0;
-    align-items: center;
-    gap: 12px;
-}
-
-#status-bar.visible {
-    display: flex;
-}
-
-#status-bar.done {
-    background: #eef7f2;
-    border-color: #c8e8d8;
-}
-
-#status-bar.failed {
-    background: #fdf2f2;
-    border-color: #f0cccc;
-}
-
-/* ── Spinner ── */
-
-.spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid #e5e5e3;
-    border-top-color: #c07a00;
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    flex-shrink: 0;
-}
-
-.spinner.done {
-    border-top-color: #1a7a4a;
-    animation: none;
-    border-color: #1a7a4a;
-}
-
-.spinner.failed {
-    border-top-color: #c0392b;
-    animation: none;
-    border-color: #c0392b;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-#status-text {
-    font-size: 12px;
-    font-weight: 500;
-    color: #c07a00;
-}
-
-#status-text.done {
-    color: #1a7a4a;
-}
-
-#status-text.failed {
-    color: #c0392b;
-}
-
-.elapsed {
-    margin-left: auto;
-    font-size: 11px;
-    color: #aaa;
-    font-variant-numeric: tabular-nums;
-}
-
-/* ── Result Stats ── */
-
-#result-stats {
-    display: none;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1px;
-    background: #e5e5e3;
-    border-bottom: 1px solid #e5e5e3;
-}
-
-#result-stats.visible {
-    display: grid;
-}
-
-.rstat {
-    background: #fff;
-    padding: 14px 20px;
-}
-
-.rstat-n {
-    font-size: 22px;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -0.03em;
-}
-
-.rstat-n.g {
-    color: #1a7a4a;
-}
-
-.rstat-n.r {
-    color: #c0392b;
-}
-
-.rstat-n.o {
-    color: #c07a00;
-}
-
-.rstat-l {
-    font-size: 11px;
-    color: #aaa;
-    margin-top: 3px;
-}
-
-/* ── Log ── */
-
-#log-wrap {
-    display: none;
-    padding: 20px 28px 48px;
-}
-
-#log-wrap.visible {
-    display: block;
-}
-
-.log-hdr {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
-}
-
-.log-hdr h3 {
-    font-size: 12px;
-    font-weight: 600;
-    color: #555;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
-.log-clear {
-    font-size: 11px;
-    color: #bbb;
-    cursor: pointer;
-    border: none;
-    background: none;
-    font-family: 'Inter', sans-serif;
-}
-
-.log-clear:hover {
-    color: #888;
-}
-
-#log-box {
-    background: #fff;
-    border: 1px solid #e5e5e3;
-    border-radius: 8px;
-    padding: 14px;
-    font-size: 11px;
-    line-height: 1.7;
-    max-height: 420px;
-    overflow-y: auto;
-    font-family: 'SF Mono', 'Fira Mono', monospace;
-    color: #555;
-    white-space: pre-wrap;
-}
-
-.log-created {
-    color: #1a7a4a;
-}
-
-.log-updated {
-    color: #3a3a9a;
-}
-
-.log-skipped {
-    color: #c07a00;
-}
-
-.log-error {
-    color: #c0392b;
-}
-
-</style>
 </head>
 <body>
 
@@ -379,7 +26,6 @@ body {
     </form>
   </div>
 </header>
-
 <div class="controls">
   <div class="field">
     <label>Model</label>
@@ -434,140 +80,31 @@ body {
   </div>
   <div id="log-box"></div>
 </div>
-<script>
-const btn       = document.getElementById('run-btn');
-const statusBar = document.getElementById('status-bar');
-const spinner   = document.getElementById('spinner');
-const statusTxt = document.getElementById('status-text');
-const elapsedEl = document.getElementById('elapsed');
-const statsEl   = document.getElementById('result-stats');
-const logWrap   = document.getElementById('log-wrap');
-const logBox    = document.getElementById('log-box');
 
-function getCookie(name) {
-  const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-  return match ? match.pop() : '';
-}
-const csrftoken = getCookie('csrftoken');
+<div id="results-toolbar">
+  <button class="btn-results" id="btn-results">Show Results</button>
+  <input class="results-filter" id="results-filter" type="text" placeholder="Filter by name or university…" style="width:220px">
+  <span class="results-count" id="results-count"></span>
+</div>
+ 
+<div id="results-wrap">
+  <table class="results-table" id="results-table">
+    <thead>
+      <tr>
+        <th>Programme</th>
+        <th>Open date</th>
+        <th>Deadline</th>
+        <th>Intake</th>
+        <th>Status</th>
+        <th>Apply</th>
+        <th>ATSIG</th> 
+        <th>Result</th>
+      </tr>
+    </thead>
+    <tbody id="results-body"></tbody>
+  </table>
+</div>
 
-let timer = null;
-let startTime = null;
- 
-function startTimer() {
-  startTime = Date.now();
-  timer = setInterval(() => {
-    const s = Math.floor((Date.now() - startTime) / 1000);
-    const m = Math.floor(s / 60);
-    elapsedEl.textContent = m > 0 ? `${m}m ${s % 60}s elapsed` : `${s}s elapsed`;
-  }, 1000);
-}
- 
-function stopTimer() {
-  clearInterval(timer);
-}
- 
-function setStatus(state, text) {
-  statusBar.className = 'visible ' + state;
-  spinner.className   = 'spinner ' + state;
-  statusTxt.className = state;
-  statusTxt.textContent = text;
-}
- 
-function appendLog(lines) {
-  lines.forEach(line => {
-    const div = document.createElement('div');
-    if (line.startsWith('CREATED'))      div.className = 'log-created';
-    else if (line.startsWith('UPDATED')) div.className = 'log-updated';
-    else if (line.startsWith('SKIPPED')) div.className = 'log-skipped';
-    else if (line.toLowerCase().includes('error')) div.className = 'log-error';
-    div.textContent = line;
-    logBox.appendChild(div);
-  });
-  logBox.scrollTop = logBox.scrollHeight;
-}
- 
-function showStats(result) {
-  document.getElementById('r-total').textContent   = result.total   ?? '—';
-  document.getElementById('r-found').textContent   = result.created ?? '—';
-  document.getElementById('r-skipped').textContent = result.skipped ?? '—';
-  document.getElementById('r-errors').textContent  =
-    (result.changes || []).filter(c => c.toLowerCase().includes('error')).length || 0;
-  statsEl.classList.add('visible');
-}
- 
-btn.addEventListener('click', async () => {
-  const config = {
-    model:            document.querySelector('[name="model"]').value,
-    workers:          Number(document.querySelector('[name="workers"]').value),
-    limit:            document.querySelector('[name="limit"]').value
-                        ? Number(document.querySelector('[name="limit"]').value) : null,
-    offset:           Number(document.querySelector('[name="offset"]').value),
-    ids:              document.querySelector('[name="ids"]').value || null,
-    resume:           document.querySelector('[name="resume"]').checked,
-    pass2_only:       document.querySelector('[name="pass2_only"]').checked,
-    include_archived: document.querySelector('[name="include_archived"]').checked,
-    missing_only:     document.querySelector('[name="missing_only"]').checked,
-  };
- 
-  btn.disabled = true;
-  btn.className = 'run-btn running';
-  btn.textContent = '⟳ Running…';
-  logBox.innerHTML = '';
-  statsEl.classList.remove('visible');
-  logWrap.classList.add('visible');
-  setStatus('running', 'Syncing with API & running scraper…');
-  startTimer();
- 
-  try {
-    const response = await fetch('/data/post_scraper/', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          "X-CSRFToken": csrftoken
-        },
-      body: JSON.stringify(config),
-    });
- 
-    const data = await response.json();
-    stopTimer();
- 
-    if (!response.ok || data.status === 'error') {
-      setStatus('failed', `Error: ${data.error || data.message || 'Unknown error'}`);
-      btn.className = 'run-btn failed';
-      btn.textContent = '✕ Failed';
-    } else {
-      const result = data.result || {};
-      setStatus('done', `Done — ${result.total ?? 0} programmes processed in ${Math.floor((Date.now() - startTime) / 1000)}s`);
-      btn.className = 'run-btn done';
-      btn.textContent = '✓ Complete';
-      showStats(result);
-
-      if (data.sync) {
-        appendLog([`SYNCED: ${data.sync.created} created, ${data.sync.updated} updated, ${data.sync.skipped} skipped`]);
-      }
-      if (result.changes?.length) {
-        appendLog(result.changes);
-      }
-    }
-  } catch (err) {
-    stopTimer();
-    setStatus('failed', `Request failed: ${err.message}`);
-    btn.className = 'run-btn failed';
-    btn.textContent = '✕ Failed';
-    appendLog([`ERROR: ${err.message}`]);
-  } finally {
-    setTimeout(() => {
-      btn.disabled = false;
-      btn.className = 'run-btn';
-      btn.textContent = '▶ Run Scraper';
-    }, 4000);
-  }
-});
- 
-document.getElementById('log-clear').addEventListener('click', () => {
-  logBox.innerHTML = '';
-});
-
-</script>
 </body>
+<script src="{% static 'core/js/scraper.js' %}"></script>
 </html>

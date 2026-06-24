@@ -131,4 +131,12 @@ SESSION_SAVE_EVERY_REQUEST = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+
+# For development - Django will serve static files automatically
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),  # Project-level static files (if any)
+]
+
+# For production - where collectstatic collects files
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
