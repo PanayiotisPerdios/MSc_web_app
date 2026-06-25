@@ -351,6 +351,27 @@ Rules:
 
 """
 
+def _reset_log_file():
+
+    target = os.path.abspath(str(LOG_FILE))
+    handler = None
+    for h in logging.getLogger().handlers:
+        if isinstance(h, logging.FileHandler) and getattr(h, "baseFilename", None) == target:
+            handler = h
+            break
+
+    if handler is None:
+        return
+
+    handler.acquire()
+    try:
+        if handler.stream is None or handler.stream.closed:
+            handler.stream = handler._open()
+        handler.stream.truncate(0)
+        handler.stream.seek(0)
+    finally:
+        handler.release()
+
 # API load
 def load_programmes_from_api(api_data: dict, active_only: bool) -> list:
 
@@ -1531,6 +1552,8 @@ def parse_args():
     return p.parse_args()
 
 def run_scraper(args):
+
+    _reset_log_file()
 
     #api_data = fetch_programmes_data(args.api_url)
     #all_programmes = load_programmes_from_api(api_data, args.active_only)

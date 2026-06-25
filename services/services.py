@@ -2,6 +2,10 @@ import requests
 from django.utils.dateparse import parse_datetime
 from data.models import Programme
 
+PROGRAMME_TYPE_TO_ADMIN_PATH = {
+    "Master": "msc-programmes",
+    "Bachelor": "bsc-programmes",
+}
 
 def fetch_programmes_data(url):
     response = requests.get(url)
@@ -76,9 +80,13 @@ def sync_programmes(api_response):
         university = department_data.get("university", {})
         department = department_data
 
+        programme_type = item.get("type")
+        admin_path = PROGRAMME_TYPE_TO_ADMIN_PATH.get(programme_type, "msc-programmes")
+
+
         atsig_url = (
             f"https://apply.studyingreece.edu.gr/admin/"
-            f"#/programmes-api/msc-programmes/{item['id']}/show"
+            f"#/programmes-api/{admin_path}/{item['id']}/show"
         )
 
         obj, was_created = Programme.objects.update_or_create(

@@ -9,24 +9,28 @@
   
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+  
+  <link rel="stylesheet" href="{% static 'core/css/global.css' %}">
   <link rel="stylesheet" href="{% static 'core/css/results.css' %}">
+
 </head>
 <body>
 
-<header class="hdr">
-  <div>
-    <span class="hdr-logo">MSc Deadlines <span>— Study in Greece</span></span>
+<nav class="navbar navbar-light sticky-top">
+  <div class="navbar-brand">
+    MSc Deadlines <span>— Study in Greece</span>
   </div>
-  <div class="hdr-right">
-    <span style="font-size:11px;color:#aaa;">{{ user.username }}</span>   
-    <form method="post" action="{% url 'logout' %}" style="margin:0;">
+  <div class="navbar-right">
+    <small class="text-muted">{{ user.username }}</small>
+    <form method="post" action="{% url 'logout' %}" class="m-0">
       {% csrf_token %}
-      <button type="submit" class="btn-logout">Logout</button>
+      <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
     </form>
-    <button class="btn" id="export-btn">Export CSV</button>
-    <button class="btn" id="export-json-btn">Export JSON</button>
+    <button class="btn btn-outline-secondary btn-sm" id="export-btn">Export CSV</button>
+    <button class="btn btn-outline-secondary btn-sm" id="export-json-btn">Export JSON</button>
   </div>
-</header>
+</nav>
 
 <div id="loading">
   <div class="spinner"></div>
@@ -42,26 +46,41 @@
 <div id="main-area" class="hidden">
 
   <div class="stats-row">
-    <div class="stat"><div class="stat-n" id="s-total">0</div><div class="stat-l">Programmes</div></div>
-    <div class="stat"><div class="stat-n g" id="s-found">0</div><div class="stat-l">Dates found</div></div>
-    <div class="stat"><div class="stat-n" id="s-missing" style="color:#aaa">0</div><div class="stat-l">No dates</div></div>
-    <div class="stat"><div class="stat-n o" id="s-errors">0</div><div class="stat-l">Errors</div></div>
-    <div class="stat"><div class="stat-n g" id="s-pct">0%</div><div class="stat-l">Coverage</div></div>
+    <div class="stat">
+      <div class="stat-n" id="s-total">0</div>
+      <div class="stat-l">Programmes</div>
+    </div>
+    <div class="stat">
+      <div class="stat-n g" id="s-found">0</div>
+      <div class="stat-l">Dates found</div>
+    </div>
+    <div class="stat">
+      <div class="stat-n" id="s-missing" style="color: #aaa;">0</div>
+      <div class="stat-l">No dates</div>
+    </div>
+    <div class="stat">
+      <div class="stat-n o" id="s-errors">0</div>
+      <div class="stat-l">Errors</div>
+    </div>
+    <div class="stat">
+      <div class="stat-n g" id="s-pct">0%</div>
+      <div class="stat-l">Coverage</div>
+    </div>
   </div>
 
   <div class="cov-bar-wrap">
-    <span style="font-size:11px;color:#bbb;white-space:nowrap">Coverage</span>
+    <span style="font-size: 11px; color: #bbb; white-space: nowrap;">Coverage</span>
     <div class="cov-track">
-      <div class="cov-f" id="cb-f" style="width:0%"></div>
-      <div class="cov-m" id="cb-m" style="width:0%"></div>
-      <div class="cov-e" id="cb-e" style="width:0%"></div>
+      <div class="cov-f" id="cb-f" style="width: 0%;"></div>
+      <div class="cov-m" id="cb-m" style="width: 0%;"></div>
+      <div class="cov-e" id="cb-e" style="width: 0%;"></div>
     </div>
     <span class="cov-pct" id="cb-pct">0%</span>
   </div>
 
   <div class="filters">
-    <input type="text" id="q" placeholder="Search programme, university, city…">
-    <select id="f-status">
+    <input type="text" class="form-control form-control-sm" id="q" placeholder="Search programme, university, city…">
+    <select class="form-select form-select-sm" id="f-status" style="width: auto;">
       <option value="">All statuses</option>
       <option value="found">Dates found</option>
       <option value="open">Open</option>
@@ -72,11 +91,11 @@
       <option value="error">Errors</option>
     </select>
     <div class="sep"></div>
-    <select id="f-uni"><option value="">All universities</option></select>
-    <select id="f-topic"><option value="">All topics</option></select>
-    <select id="f-city"><option value="">All cities</option></select>
+    <select class="form-select form-select-sm" id="f-uni" style="width: auto;"><option value="">All universities</option></select>
+    <select class="form-select form-select-sm" id="f-topic" style="width: auto;"><option value="">All topics</option></select>
+    <select class="form-select form-select-sm" id="f-city" style="width: auto;"><option value="">All cities</option></select>
     <div class="sep"></div>
-    <select id="f-sort">
+    <select class="form-select form-select-sm" id="f-sort" style="width: auto;">
       <option value="university">Sort: University</option>
       <option value="deadline">Sort: Deadline</option>
       <option value="open_date">Sort: Open date</option>
@@ -109,6 +128,8 @@
 
   <div class="pag" id="pag"></div>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
 
 <script src="{% static 'core/js/results.js' %}"></script>
 

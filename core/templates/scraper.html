@@ -7,75 +7,110 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MSc Deadlines — Study in Greece</title>
 
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="{% static 'core/css/global.css' %}">
   <link rel="stylesheet" href="{% static 'core/css/scraper.css' %}">
 
 </head>
 <body>
 
-<header class="hdr">
-  <div>
-    <span class="hdr-logo">MSc Deadlines <span>— Study in Greece</span></span>
+<nav class="navbar navbar-light sticky-top">
+  <div class="navbar-brand">
+    MSc Deadlines <span>— Study in Greece</span>
   </div>
-  <div class="hdr-right">
-    <span style="font-size:11px;color:#aaa;">{{ user.username }}</span>
-    <form method="post" action="{% url 'logout' %}" style="margin:0;">
+  <div class="navbar-right">
+    <small class="text-muted">{{ user.username }}</small>
+    <form method="post" action="{% url 'logout' %}" class="m-0">
       {% csrf_token %}
-      <button type="submit" class="btn-logout">Logout</button>
+      <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
     </form>
   </div>
-</header>
+</nav>
+
 <div class="controls">
   <div class="field">
     <label>Model</label>
-    <select name="model">
+    <select class="form-select" name="model">
       <option value="openai/gpt-4.1-nano">GPT-4.1 nano</option>
     </select>
   </div>
+  
   <div class="field">
     <label>Workers</label>
-    <input type="number" name="workers" value="3" style="width:70px">
+    <input type="number" class="form-control" name="workers" value="3" style="width: 70px;">
   </div>
+  
   <div class="field">
     <label>Limit</label>
-    <input type="number" name="limit" placeholder="all" style="width:70px">
+    <input type="number" class="form-control" name="limit" placeholder="all" style="width: 70px;">
   </div>
+  
   <div class="field">
     <label>Offset</label>
-    <input type="number" name="offset" value="0" style="width:70px">
+    <input type="number" class="form-control" name="offset" value="0" style="width: 70px;">
   </div>
+  
   <div class="field">
     <label>IDs (comma-separated)</label>
-    <input type="text" name="ids" placeholder="e.g. 1,2,3" style="width:160px">
+    <input type="text" class="form-control" name="ids" placeholder="e.g. 1,2,3" style="width: 160px;">
   </div>
- 
-  <label class="check-label"><input type="checkbox" name="resume"> Resume</label>
-  <label class="check-label"><input type="checkbox" name="pass2_only"> Pass 2 only</label>
-  <label class="check-label"><input type="checkbox" name="include_archived"> Include archived</label>
-  <label class="check-label"><input type="checkbox" name="missing_only"> Missing only</label>
- 
+
+  <div class="form-check">
+    <input type="checkbox" class="form-check-input" name="resume" id="resume">
+    <label class="form-check-label" for="resume">Resume</label>
+  </div>
+
+  <div class="form-check">
+    <input type="checkbox" class="form-check-input" name="pass2_only" id="pass2_only">
+    <label class="form-check-label" for="pass2_only">Pass 2 only</label>
+  </div>
+
+  <div class="form-check">
+    <input type="checkbox" class="form-check-input" name="include_archived" id="include_archived">
+    <label class="form-check-label" for="include_archived">Include archived</label>
+  </div>
+
+  <div class="form-check">
+    <input type="checkbox" class="form-check-input" name="missing_only" id="missing_only">
+    <label class="form-check-label" for="missing_only">Missing only</label>
+  </div>
+
   <button class="run-btn" id="run-btn">
     ▶ Run Scraper
   </button>
-
-  
 </div>
+
 <div id="status-bar">
   <div class="spinner" id="spinner"></div>
   <span id="status-text">Starting scraper…</span>
   <span class="elapsed" id="elapsed"></span>
 </div>
- 
+
 <div id="result-stats">
-  <div class="rstat"><div class="rstat-n" id="r-total">—</div><div class="rstat-l">Total scraped</div></div>
-  <div class="rstat"><div class="rstat-n g" id="r-found">—</div><div class="rstat-l">Dates found</div></div>
-  <div class="rstat"><div class="rstat-n o" id="r-skipped">—</div><div class="rstat-l">Skipped</div></div>
-  <div class="rstat"><div class="rstat-n r" id="r-errors">—</div><div class="rstat-l">Errors</div></div>
+  <div class="rstat">
+    <div class="rstat-n" id="r-total">—</div>
+    <div class="rstat-l">Total scraped</div>
+  </div>
+  <div class="rstat">
+    <div class="rstat-n g" id="r-found">—</div>
+    <div class="rstat-l">Dates found</div>
+  </div>
+  <div class="rstat">
+    <div class="rstat-n o" id="r-skipped">—</div>
+    <div class="rstat-l">Skipped</div>
+  </div>
+  <div class="rstat">
+    <div class="rstat-n r" id="r-errors">—</div>
+    <div class="rstat-l">Errors</div>
+  </div>
 </div>
- 
+
 <div id="log-wrap">
   <div class="log-hdr">
+    <h3>Log</h3>
     <button class="log-clear" id="log-clear">Clear</button>
   </div>
   <div id="log-box"></div>
@@ -83,10 +118,10 @@
 
 <div id="results-toolbar">
   <button class="btn-results" id="btn-results">Show Results</button>
-  <input class="results-filter" id="results-filter" type="text" placeholder="Filter by name or university…" style="width:220px">
+  <input class="results-filter" id="results-filter" type="text" placeholder="Filter by name or university…" style="width: 220px;">
   <span class="results-count" id="results-count"></span>
 </div>
- 
+
 <div id="results-wrap">
   <table class="results-table" id="results-table">
     <thead>
@@ -97,7 +132,7 @@
         <th>Intake</th>
         <th>Status</th>
         <th>Apply</th>
-        <th>ATSIG</th> 
+        <th>ATSIG</th>
         <th>Result</th>
       </tr>
     </thead>
@@ -105,6 +140,9 @@
   </table>
 </div>
 
-</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
 <script src="{% static 'core/js/scraper.js' %}"></script>
+
+</body>
 </html>

@@ -129,7 +129,6 @@ async function pollLogs() {
   } catch (e) {}
 }
  
-// ── Run button ──
 btn.addEventListener('click', async () => {
   const config = {
     model:            document.querySelector('[name="model"]').value,
@@ -228,7 +227,6 @@ btn.addEventListener('click', async () => {
   }
 });
  
-// ── Results toggle ──
 btnResults.addEventListener('click', () => {
   const open = resultsWrap.classList.contains('visible');
   if (open) {
@@ -242,10 +240,8 @@ btnResults.addEventListener('click', () => {
   }
 });
  
-// ── Filter ──
 resultsFilter.addEventListener('input', () => filterResults(resultsFilter.value));
  
-// ── Clear log ──
 document.getElementById('log-clear').addEventListener('click', () => {
   logBox.innerHTML = '';
 });

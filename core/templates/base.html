@@ -6,49 +6,60 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MSc Deadlines — Study in Greece</title>
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+  
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="{% static 'core/css/global.css' %}">
   <link rel="stylesheet" href="{% static 'core/css/base.css' %}">
 
 </head>
 <body>
-<header class="hdr">
-  <div>
-    <span class="hdr-logo">MSc Deadlines <span>— Study in Greece</span></span>
+
+<nav class="navbar navbar-light sticky-top">
+  <div class="navbar-brand">
+    MSc Deadlines <span>— Study in Greece</span>
   </div>
-  <div class="hdr-right">
-    <span style="font-size:11px;color:#aaa;">{{ user.username }}</span>
-    <form method="post" action="{% url 'logout' %}" style="margin:0;">
+  <div class="navbar-right">
+    <small class="text-muted">{{ user.username }}</small>
+    <form method="post" action="{% url 'logout' %}" class="m-0">
       {% csrf_token %}
-      <button type="submit" class="btn-logout">Logout</button>
+      <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
     </form>
   </div>
-</header>
+</nav>
+
 
 <main class="dashboard">
-
-<a href="/scraper/" class="card card-action" id="run-scraper">
-    <div class="card-content">
-      <div class="icon">⚙️</div>
-      <h2>Scraper</h2>
-      <p>Run the scraper tool<br>Click to start</p>
+  
+  <a href="/scraper/" class="card card-action text-center" style="padding: 60px 48px;">
+    <div class="card-body p-0">
+      <div class="card-icon">⚙️</div>
+      <h5 class="card-title">Scraper</h5>
+      <p class="card-text">Run the scraper tool<br>Click to start</p>
     </div>
-</a>
+  </a>
 
-
-<a href="/results/" class="card card-action" id="run-scraper">
-    <div class="card-content">
-      <div class="icon">🛢️</div>
-      <h2>Internal Database Records</h2>
-      <p>Get currenlty saved records<br>Click to view</p>
+  <a href="/results/" class="card card-action text-center" style="padding: 60px 48px;">
+    <div class="card-body p-0">
+      <div class="card-icon">🛢️</div>
+      <h5 class="card-title">Internal Database Records</h5>
+      <p class="card-text">Get currently saved records<br>Click to view</p>
     </div>
-</a>
+  </a>
 
-<a href="/sync/" class="card card-action" id="run-scraper">
-    <div class="card-content">
-      <div class="icon">🔄</div>
-      <h2>Sync</h2>
-      <p>Sync internal database with the API<br>Click to view</p>
+  <a href="/sync/" class="card card-action text-center" style="padding: 60px 48px;">
+    <div class="card-body p-0">
+      <div class="card-icon">🔄</div>
+      <h5 class="card-title">Sync</h5>
+      <p class="card-text">Sync internal database with the API<br>Click to view</p>
     </div>
-</a>
-</body>
+  </a>
+
 </main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

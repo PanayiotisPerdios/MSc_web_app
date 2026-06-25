@@ -21,6 +21,9 @@ def is_staff_user(user):
 @login_required
 @user_passes_test(is_staff_user)
 def scraper_logs(request):
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    
     try:
         since_line = int(request.GET.get("since", 0))
         with open(LOG_FILE, "r", encoding="utf-8") as f:
@@ -36,6 +39,9 @@ def scraper_logs(request):
 @login_required
 @user_passes_test(is_staff_user)
 def scraper_log_stream(request):
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    
     def event_stream():
         for _ in range(6):
             if LOG_FILE.exists():
@@ -56,18 +62,19 @@ def scraper_log_stream(request):
 
     response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"
-    response["X-Accel-Buffering"] = "no"  # important if behind nginx
+    response["X-Accel-Buffering"] = "no"
     return response
 
 _scraper_state = {"running": False, "result": None, "error": None}
 
 @login_required
 @user_passes_test(is_staff_user)
-@require_POST
 def post_scraper(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
     if _scraper_state["running"]:
         return JsonResponse({"status": "error", "message": "Scraper already running"}, status=409)
-
 
     try:
         data = json.loads(request.body)
@@ -77,10 +84,8 @@ def post_scraper(request):
     try:
         api_data = fetch_programmes_data(API_URL)
         sync_result = sync_programmes(api_data)
-    except Exception as e:
-        return JsonResponse({"status": "error", "message": f"Sync failed: {e}"}, status=500)
     except requests.HTTPError as e:
-        return JsonResponse({"status": "error", "message": f"API failed: {e}"}, status=502)
+        return JsonResponse({"status": "error", "message": f"Sync & API failed: {e}"}, status=500)
 
 
     data.setdefault("workers", 3)
@@ -122,8 +127,10 @@ def scraper_status(request):
 
 @login_required
 @user_passes_test(is_staff_user)
-@require_GET
 def get_programmes_view(request):
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
     programmes = Programme.objects.values(
         "id", "name_en", "name_gr", "university", "university_gr",
         "department", "city", "topics", "languages", "study_modes",
@@ -141,8 +148,9 @@ def get_programmes_view(request):
 
 @login_required
 @user_passes_test(is_staff_user)
-@require_POST
 def sync_programmes_view(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
 
     try:
         api_data = fetch_programmes_data(API_URL)
