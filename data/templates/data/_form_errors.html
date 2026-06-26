@@ -1,0 +1,11 @@
+<div class="alert alert-danger" role="alert">
+  <strong>Invalid form submission:</strong>
+  <ul class="mb-0 mt-1">
+    {% for field, errs in errors.items %}
+      {% for err in errs %}
+        <li>{{ field }}: {{ err }}</li>
+      {% endfor %}
+    {% endfor %}
+  </ul>
+</div>
+ 

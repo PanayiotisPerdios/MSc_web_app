@@ -1,0 +1,120 @@
+{% load static %}
+
+{% if state.running %}
+<div class="scraper-running" hx-get="{% url 'scraper_status' %}" hx-trigger="every 2s" hx-target="#status-region" hx-swap="innerHTML">
+  <div id="status-bar" class="visible running">
+    <div class="spinner running"></div>
+    <span class="running">Scraper is running…</span>
+  </div>
+</div>
+
+{% elif state.error %}
+<div id="status-bar" class="visible failed">
+  <span class="failed">✕ Error: {{ state.error }}</span>
+</div>
+
+{% elif state.result %}
+{% with r=state.result %}
+<div id="status-bar" class="visible done">
+  <span class="done">✓ Done — {{ r.scope_total|default:r.total|default:0 }} programmes processed</span>
+</div>
+
+<div id="result-stats" class="visible">
+  <div class="rstat">
+    <div class="rstat-n">{{ r.scope_total|default:r.total|default:"—" }}</div>
+    <div class="rstat-l">Total scraped</div>
+  </div>
+  <div class="rstat">
+    <div class="rstat-n g">{{ r.scope_found|default:r.created|default:"—" }}</div>
+    <div class="rstat-l">Dates found</div>
+  </div>
+  <div class="rstat">
+    <div class="rstat-n o">{{ r.scope_skipped|default:r.skipped|default:"—" }}</div>
+    <div class="rstat-l">Skipped</div>
+  </div>
+  <div class="rstat">
+    <div class="rstat-n r">{{ r.scope_errors|default:"0" }}</div>
+    <div class="rstat-l">Errors</div>
+  </div>
+</div>
+
+{% if r.rows %}
+<div id="results-toolbar" style="display:flex; align-items:center; gap:10px; padding:16px 28px 0;">
+  <button class="btn-results" onclick="const w = document.getElementById('results-wrap'); const open = w.style.display === 'block'; w.style.display = open ? 'none' : 'block'; this.textContent = open ? 'Show Results' : 'Hide Results';">
+    Show Results
+  </button>
+  <input type="text" id="results-filter" class="results-filter" placeholder="Filter by name or university…" style="width:220px" oninput="filterRows(this.value)">
+  <span class="results-count" id="results-count" style="margin-left:auto">
+    {{ r.rows|length }} programme{{ r.rows|length|pluralize }}
+  </span>
+</div>
+
+<div id="results-wrap" style="display:none">
+  <table class="results-table" id="results-table">
+    <thead>
+      <tr>
+        <th>Programme</th>
+        <th>Open date</th>
+        <th>Deadline</th>
+        <th>Intake</th>
+        <th>Status</th>
+        <th>Apply</th>
+        <th>ATSIG</th>
+        <th>Result</th>
+      </tr>
+    </thead>
+    <tbody id="results-body">
+      {% for row in r.rows %}
+      <tr data-name="{{ row.name_en|lower }}" data-uni="{{ row.university|lower }}">
+        <td>
+          <div class="cell-programme">{{ row.name_en|default:"—" }}</div>
+          <div class="cell-uni">{{ row.university|default:"" }}</div>
+        </td>
+        <td class="cell-date {% if not row.open_date %}empty{% endif %}">{{ row.open_date|default:"—" }}</td>
+        <td class="cell-date {% if not row.deadline  %}empty{% endif %}">{{ row.deadline|default:"—"  }}</td>
+        <td class="cell-date {% if not row.intake    %}empty{% endif %}">{{ row.intake|default:"—"    }}</td>
+        <td>
+          {% with s=row.status|lower %}
+          {% if   s == "open"        %}<span class="badge badge-open">Open</span>
+          {% elif s == "closed"      %}<span class="badge badge-closed">Closed</span>
+          {% elif s == "rolling"     %}<span class="badge badge-rolling">Rolling</span>
+          {% elif s == "coming_soon" %}<span class="badge badge-other">Coming soon</span>
+          {% else                    %}<span class="badge badge-other">—</span>
+          {% endif %}
+          {% endwith %}
+        </td>
+        <td>
+          {% if row.apply_url %}
+            <a class="apply-link" href="{{ row.apply_url }}" target="_blank" rel="noopener">Apply ↗</a>
+          {% else %}
+            <span style="color:#ccc">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if row.atsig_url %}
+            <a class="apply-link" href="{{ row.atsig_url }}" target="_blank" rel="noopener">Edit ↗</a>
+          {% else %}
+            <span style="color:#ccc">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if row.scrape_status == "error" %}
+            <span class="badge badge-error">Error</span>
+          {% elif row.found == "yes" %}
+            <span class="badge badge-found">Found</span>
+          {% else %}
+            <span class="badge badge-missing">Missing</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script src="{% static 'core/js/_scraper_status.js' %}"></script>
+
+{% endif %}
+{% endwith %}
+
+{% endif %}

@@ -1,59 +1,36 @@
-function getCookie(name) {
-  const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-  return match ? match.pop() : '';
-}
-const csrftoken = getCookie('csrftoken');
+const btn = document.getElementById("sync-btn");
 
-document.getElementById("sync-btn").addEventListener("click", async () => {
-
-    const btn = document.getElementById("sync-btn");
-    const status = document.getElementById("sync-status");
-
-    btn.disabled = true;
-    btn.classList.add("syncing");
-
-    btn.textContent = "⟳ Synchronizing...";
-    status.textContent = "Fetching programmes from API...";
-
-    try {
-
-        const response = await fetch("/data/sync_programmes/", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": csrftoken
-            }
-        });
-
-        const data = await response.json();
-
-        btn.classList.remove("syncing");
-        btn.classList.add("done");
-
-        btn.textContent = "✓ Synchronization Complete";
-
-        status.textContent =
-            `Created: ${data.sync.created} | Updated: ${data.sync.updated} | Skipped ${data.sync.skipped}| Total: ${data.sync.total}`;
-
-    } catch (err) {
-
-        console.error(err);
-
-        btn.classList.remove("syncing");
-
-        btn.textContent = "Sync Failed";
-        status.textContent = "An error occurred during synchronization.";
-
-    } finally {
-
-        setTimeout(() => {
-            btn.disabled = false;
-
-            btn.classList.remove("done");
-
-            btn.textContent = "↻ Synchronize Programmes";
-        }, 3000);
-
-    }
-
+document.body.addEventListener("htmx:beforeRequest", e => {
+  if (e.target !== btn) return;
+  btn.classList.add("syncing");
+  btn.querySelector("span") && (btn.querySelector("span").textContent = "⟳ Synchronizing...");
+  btn.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = "⟳ Synchronizing..."; });
+  document.getElementById("sync-status").textContent = "Synchronizing…";
 });
+
+document.body.addEventListener("htmx:afterRequest", e => {
+  if (e.target !== btn) return;
+  btn.classList.remove("syncing");
+  if (e.detail.successful) {
+    btn.classList.add("done");
+    btn.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = "✓ Synchronization Complete"; });
+    document.getElementById("sync-status").textContent = "Sync complete";
+  } else {
+    btn.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = "✕ Sync Failed"; });
+    document.getElementById("sync-status").textContent = "Sync failed";
+  }
+  setTimeout(() => {
+    btn.classList.remove("done");
+    btn.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = "↻ Synchronize Programmes"; });
+    document.getElementById("sync-status").textContent = "Ready to synchronize";
+  }, 3000);
+});
+
+document.body.addEventListener("htmx:configRequest", e => {
+  e.detail.headers["X-CSRFToken"] = getCookie("csrftoken");
+});
+
+function getCookie(name) {
+  const match = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
+  return match ? match.pop() : "";
+}

@@ -1,0 +1,131 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MSc Deadlines — Study in Greece</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+
+  <link rel="stylesheet" href="{% static 'core/css/global.css' %}">
+  <link rel="stylesheet" href="{% static 'core/css/results.css' %}">
+</head>
+<body>
+
+<nav class="navbar navbar-light sticky-top">
+  <div class="navbar-brand">
+    MSc Deadlines <span>— Study in Greece</span>
+  </div>
+  <div class="navbar-right">
+    <small class="text-muted">{{ user.username }}</small>
+    <form method="post" action="{% url 'logout' %}" class="m-0">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
+    </form>
+    <a href="{% url 'export_csv' %}?{{ request.GET.urlencode }}"
+       class="btn btn-outline-secondary btn-sm">Export CSV</a>
+    <a href="{% url 'export_json' %}?{{ request.GET.urlencode }}"
+       class="btn btn-outline-secondary btn-sm">Export JSON</a>
+  </div>
+</nav>
+
+<div class="stats-row">
+  <div class="stat">
+    <div class="stat-n">{{ total }}</div>
+    <div class="stat-l">Programmes</div>
+  </div>
+  <div class="stat">
+    <div class="stat-n g">{{ found }}</div>
+    <div class="stat-l">Dates found</div>
+  </div>
+  <div class="stat">
+    <div class="stat-n" style="color:#aaa">{{ missing }}</div>
+    <div class="stat-l">No dates</div>
+  </div>
+  <div class="stat">
+    <div class="stat-n o">{{ errors }}</div>
+    <div class="stat-l">Errors</div>
+  </div>
+  <div class="stat">
+    <div class="stat-n g">{{ pct }}%</div>
+    <div class="stat-l">Coverage</div>
+  </div>
+</div>
+
+<div class="cov-bar-wrap">
+  <span style="font-size:11px;color:#bbb;white-space:nowrap">Coverage</span>
+  <div class="cov-track">
+    {% if total %}
+      <div class="cov-f" style="width:{% widthratio found   total 100 %}%"></div>
+      <div class="cov-m" style="width:{% widthratio missing total 100 %}%"></div>
+      <div class="cov-e" style="width:{% widthratio errors  total 100 %}%"></div>
+    {% endif %}
+  </div>
+  <span class="cov-pct">{{ pct }}%</span>
+</div>
+
+<div class="filters" id="filters" hx-target="#table-region" hx-swap="innerHTML" hx-indicator="#htmx-spinner">
+  <input type="text" name="q" value="{{ q }}" data-filter class="form-control form-control-sm" placeholder="Search programme, university, city…" hx-get="{% url 'results_table' %}" hx-trigger="input delay:300ms" hx-include="[data-filter]">
+  <select name="status" data-filter class="form-select form-select-sm" style="width:auto" hx-get="{% url 'results_table' %}" hx-trigger="change" hx-include="[data-filter]">
+    <option value=""           {% if not status    %}selected{% endif %}>All statuses</option>
+    <option value="found"      {% if status == "found"       %}selected{% endif %}>Dates found</option>
+    <option value="open"       {% if status == "open"        %}selected{% endif %}>Open</option>
+    <option value="closed"     {% if status == "closed"      %}selected{% endif %}>Closed</option>
+    <option value="rolling"    {% if status == "rolling"     %}selected{% endif %}>Rolling</option>
+    <option value="coming_soon"{% if status == "coming_soon" %}selected{% endif %}>Coming soon</option>
+    <option value="missing"    {% if status == "missing"     %}selected{% endif %}>No dates</option>
+    <option value="error"      {% if status == "error"       %}selected{% endif %}>Errors</option>
+  </select>
+
+  <div class="sep"></div>
+
+  <select name="university"
+          data-filter
+          class="form-select form-select-sm"
+          style="width:auto"
+          hx-get="{% url 'results_table' %}"
+          hx-trigger="change"
+          hx-include="[data-filter]">
+    <option value="">All universities</option>
+    {% for u in universities %}
+      <option value="{{ u }}" {% if uni == u %}selected{% endif %}>{{ u }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="topic" data-filter class="form-select form-select-sm" style="width:auto" hx-get="{% url 'results_table' %}" hx-trigger="change" hx-include="[data-filter]">
+    <option value="">All topics</option>
+    {% for t in topics %}
+      <option value="{{ t }}" {% if topic == t %}selected{% endif %}>{{ t }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="city" data-filter class="form-select form-select-sm" style="width:auto" hx-get="{% url 'results_table' %}" hx-trigger="change" hx-include="[data-filter]">
+    <option value="">All cities</option>
+    {% for c in cities %}
+      <option value="{{ c }}" {% if city == c %}selected{% endif %}>{{ c }}</option>
+    {% endfor %}
+  </select>
+
+  <div class="sep"></div>
+
+  <select name="sort" data-filter class="form-select form-select-sm" style="width:auto" hx-get="{% url 'results_table' %}" hx-trigger="change" hx-include="[data-filter]">
+    <option value="university" {% if sort == "university" %}selected{% endif %}>Sort: University</option>
+    <option value="deadline"   {% if sort == "deadline"   %}selected{% endif %}>Sort: Deadline</option>
+    <option value="open_date"  {% if sort == "open_date"  %}selected{% endif %}>Sort: Open date</option>
+    <option value="name_en"    {% if sort == "name_en"    %}selected{% endif %}>Sort: Programme</option>
+    <option value="city"       {% if sort == "city"       %}selected{% endif %}>Sort: City</option>
+  </select>
+
+  <span class="htmx-indicator" id="htmx-spinner" style="font-size:12px;color:#aaa">Loading…</span>
+</div>
+
+<div id="table-region">
+  {% include "data/_programmes_table.html" %}
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

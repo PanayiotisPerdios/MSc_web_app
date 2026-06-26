@@ -1,0 +1,16 @@
+{% if error %}
+  <div class="alert alert-danger mt-3" role="alert">
+    <strong>Sync failed:</strong> {{ error }}
+  </div>
+{% elif result %}
+  <div class="alert alert-success mt-3" role="alert">
+    <strong>Sync complete.</strong>
+    {% if result.created is not None %}
+      Created: <strong>{{ result.created }}</strong> &nbsp;|&nbsp;
+      Updated: <strong>{{ result.updated }}</strong> &nbsp;|&nbsp;
+      Unchanged: <strong>{{ result.unchanged }}</strong>
+    {% else %}
+      {{ result }}
+    {% endif %}
+  </div>
+{% endif %}

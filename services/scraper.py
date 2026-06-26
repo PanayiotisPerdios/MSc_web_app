@@ -31,9 +31,8 @@ from types import SimpleNamespace
 from services.services import fetch_programmes_data
 from data.models import Programme
 from django.utils.dateparse import parse_date, parse_datetime
+from django.conf import settings
 
-
-load_dotenv()
 
 # Configuration
 
@@ -497,8 +496,7 @@ def load_programmes_from_db(active_only: bool = False) -> list:
 def load_programmes(csv_path: str, active_only: bool) -> list:
     path = Path(csv_path)
     if not path.exists():
-        log.error(f"CSV not found: {csv_path}")
-        sys.exit(1)
+        raise FileNotFoundError(f"CSV not found: {csv_path}")
 
     programmes = []
     with open(path, encoding="utf-8") as f:
@@ -549,10 +547,9 @@ def load_programmes(csv_path: str, active_only: bool) -> list:
 # Scraping helpers
 
 def get_graph_config(model: str) -> dict:
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = settings.OPENAI_API_KEY
     if not api_key:
-        log.error("OPENAI_API_KEY not set. Add to .env file.")
-        sys.exit(1)
+        raise ValueError("OPENAI_API_KEY is not set. Add it to your .env file.")
     return {
         "llm": {"api_key": api_key, "model": model},
         "headless": True,
@@ -565,8 +562,10 @@ def import_scraper():
         from scrapegraphai.graphs import SmartScraperGraph
         return SmartScraperGraph
     except ImportError:
-        log.error("Run: pip install scrapegraphai playwright && playwright install chromium")
-        sys.exit(1)
+        raise ImportError(
+            "scrapegraphai is not installed. "
+            "Run: pip install scrapegraphai playwright && playwright install chromium"
+        )
 
 
 def strip_json_fences(text: str) -> str:

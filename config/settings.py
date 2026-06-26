@@ -15,6 +15,8 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+API_URL = os.getenv("API_URL")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -45,7 +47,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'core',
     'data',
-    'services',
 ]
 
 MIDDLEWARE = [

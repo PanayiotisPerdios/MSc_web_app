@@ -7,24 +7,5 @@ def is_staff_user(user):
 
 @login_required
 @user_passes_test(is_staff_user)
-@ensure_csrf_cookie
 def base(request):
     return render(request, "base.html")
-
-@login_required
-@user_passes_test(is_staff_user)
-@ensure_csrf_cookie
-def results(request):
-    return render(request, "results.html")
-
-@login_required
-@user_passes_test(is_staff_user)
-@ensure_csrf_cookie
-def scraper(request):
-    return render(request, "scraper.html")
-
-@login_required
-@user_passes_test(is_staff_user)
-@ensure_csrf_cookie
-def sync(request):
-    return render(request, "sync.html")

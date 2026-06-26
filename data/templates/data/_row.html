@@ -1,0 +1,65 @@
+
+<tr>
+  <td>
+    <div class="uni-name">{{ r.university }}</div>
+    <div class="uni-dept" title="{{ r.department }}">{{ r.department }}</div>
+    <span class="city-tag">{{ r.city }}</span>
+  </td>
+
+  <td>
+    <div class="prog-name">{{ r.name_en }}</div>
+    <div class="prog-tags">
+      {% for topic in r.topics|slice:":2" %}
+        <span class="ptag ptag-topic">{{ topic }}</span>
+      {% endfor %}
+      {% if r.ects     %}<span class="ptag">{{ r.ects }} ECTS</span>{% endif %}
+      {% if r.semesters%}<span class="ptag">{{ r.semesters }} sem</span>{% endif %}
+    </div>
+  </td>
+
+  <td class="date-cell">
+    {% if r.open_date %}
+      <span class="date-val has-date">{{ r.open_date }}</span>
+    {% else %}
+      <span class="date-val no-date">—</span>
+    {% endif %}
+  </td>
+
+  <td class="date-cell">
+    {% if r.deadline %}
+      <span class="date-val has-date">{{ r.deadline }}</span>
+    {% else %}
+      <span class="date-val no-date">—</span>
+    {% endif %}
+  </td>
+
+  <td style="font-size:11px;color:#bbb;white-space:nowrap">{{ r.intake|default:"—" }}</td>
+
+  <td><span class="badge b-{{ badge }}">{{ label }}</span></td>
+
+  <td class="tuition {% if r.tuition and r.tuition != 'Free' %}paid{% endif %}">
+    {{ r.tuition|default:"—" }}
+  </td>
+
+  <td class="apply-link">
+    {% if r.apply_url %}
+      <a href="{{ r.apply_url }}" target="_blank" rel="noopener">Apply →</a>
+    {% elif r.programme_url %}
+      <a href="{{ r.programme_url }}" target="_blank" rel="noopener">Website →</a>
+    {% else %}
+      <span style="color:#ddd">—</span>
+    {% endif %}
+  </td>
+
+  {# Notes #}
+  <td class="notes-cell">{{ r.notes|default:"" }}</td>
+
+  {# ATSIG edit link #}
+  <td class="apply-link">
+    {% if r.atsig_url %}
+      <a class="btn" style="font-size:12px" href="{{ r.atsig_url }}" target="_blank" rel="noopener">Edit</a>
+    {% else %}
+      <span style="color:#ddd">—</span>
+    {% endif %}
+  </td>
+</tr>

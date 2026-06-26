@@ -1,0 +1,88 @@
+{% load static %}
+
+<div class="tbl-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>University</th>
+        <th>Programme</th>
+        <th>Opens</th>
+        <th>Deadline</th>
+        <th>Intake</th>
+        <th>Status</th>
+        <th>Tuition</th>
+        <th>Apply</th>
+        <th>Notes</th>
+        <th>ATSIG</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in page_obj %}
+        {% comment %}Determine badge class{% endcomment %}
+        {% if r.scrape_status == "error" %}
+          {% with badge="error" label="Error" %}
+            {% include "data/_row.html" %}
+          {% endwith %}
+        {% elif not r.found %}
+          {% with badge="missing" label="No dates" %}
+            {% include "data/_row.html" %}
+          {% endwith %}
+        {% elif r.application_status == "open" %}
+          {% with badge="open" label="Open" %}
+            {% include "data/_row.html" %}
+          {% endwith %}
+        {% elif r.application_status == "closed" %}
+          {% with badge="closed" label="Closed" %}
+            {% include "data/_row.html" %}
+          {% endwith %}
+        {% elif r.application_status == "rolling" %}
+          {% with badge="rolling" label="Rolling" %}
+            {% include "data/_row.html" %}
+          {% endwith %}
+        {% elif r.application_status == "coming_soon" %}
+          {% with badge="coming" label="Coming soon" %}
+            {% include "data/_row.html" %}
+          {% endwith %}
+        {% else %}
+          {% with badge="found" label="Found" %}
+            {% include "data/_row.html" %}
+          {% endwith %}
+        {% endif %}
+      {% empty %}
+        <tr><td colspan="10" style="text-align:center;color:#aaa;padding:40px">
+          No results match your filters.
+        </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="result-count" style="font-size:12px;color:#aaa;padding:6px 0">
+  {{ page_obj.paginator.count }} result{{ page_obj.paginator.count|pluralize }}
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="pag">
+  {% if page_obj.has_previous %}
+    <a class="pg" href="?{{ params }}&page={{ page_obj.previous_page_number }}" hx-get="{% url 'results_table' %}?{{ params }}&page={{ page_obj.previous_page_number }}" hx-target="#table-region" hx-swap="innerHTML">← Prev</a>
+  {% else %}
+    <button class="pg" disabled>← Prev</button>
+  {% endif %}
+
+  {% for num in page_obj.paginator.page_range %}
+    {% if num == page_obj.number %}
+      <button class="pg on">{{ num }}</button>
+    {% elif page_obj.number|add:"-3" <= num and num <= page_obj.number|add:"3" or num == 1 or num == page_obj.paginator.num_pages %}
+      <a class="pg" href="?{{ params }}&page={{ num }}" hx-get="{% url 'results_table' %}?{{ params }}&page={{ num }}" hx-target="#table-region" hx-swap="innerHTML">{{ num }}</a>
+    {% elif num == page_obj.number|add:"-4" or num == page_obj.number|add:"4" %}
+      <span class="pg-dots">…</span>
+    {% endif %}
+  {% endfor %}
+
+  {% if page_obj.has_next %}
+    <a class="pg" href="?{{ params }}&page={{ page_obj.next_page_number }}" hx-get="{% url 'results_table' %}?{{ params }}&page={{ page_obj.next_page_number }}" hx-target="#table-region" hx-swap="innerHTML">Next →</a>
+  {% else %}
+    <button class="pg" disabled>Next →</button>
+  {% endif %}
+</div>
+{% endif %}
