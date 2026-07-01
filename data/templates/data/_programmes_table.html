@@ -18,7 +18,6 @@
     </thead>
     <tbody>
       {% for r in page_obj %}
-        {% comment %}Determine badge class{% endcomment %}
         {% if r.scrape_status == "error" %}
           {% with badge="error" label="Error" %}
             {% include "data/_row.html" %}

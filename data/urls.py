@@ -10,6 +10,7 @@ urlpatterns = [
     path("scraper/run/",          views.post_scraper,       name="post_scraper"),
     path("scraper/status/",       views.scraper_status,     name="scraper_status"),
     path("scraper/log/stream/",   views.scraper_log_stream, name="scraper_log_stream"),
+    path("scraper/stop/", views.scraper_stop, name="scraper_stop"),
     path("sync/",                 views.sync_view,           name="sync"),
     path("sync/run/",             views.sync_programmes_view,name="sync_run"),
 ]

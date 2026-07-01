@@ -1,20 +1,17 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MSc Deadlines — Study in Greece</title>
 
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+{% block title %}MSc Deadlines — Results{% endblock %}
 
-  <link rel="stylesheet" href="{% static 'core/css/global.css' %}">
-  <link rel="stylesheet" href="{% static 'core/css/results.css' %}">
-</head>
-<body>
+{% block extra_head %}
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core/css/results.css' %}">
+{% endblock %}
+
+{% block nav %}
 <nav class="navbar navbar-light sticky-top">
   <div class="navbar-brand">
     MSc Deadlines <span>— Study in Greece</span>
@@ -31,7 +28,9 @@
        class="btn btn-outline-secondary btn-sm">Export JSON</a>
   </div>
 </nav>
+{% endblock %}
 
+{% block content %}
 <div class="stats-row">
   <div class="stat">
     <div class="stat-n">{{ total }}</div>
@@ -82,13 +81,7 @@
 
   <div class="sep"></div>
 
-  <select name="university"
-          data-filter
-          class="form-select form-select-sm"
-          style="width:auto"
-          hx-get="{% url 'results_table' %}"
-          hx-trigger="change"
-          hx-include="[data-filter]">
+  <select name="university" data-filter class="form-select form-select-sm" style="width:auto" hx-get="{% url 'results_table' %}" hx-trigger="change" hx-include="[data-filter]">
     <option value="">All universities</option>
     {% for u in universities %}
       <option value="{{ u }}" {% if uni == u %}selected{% endif %}>{{ u }}</option>
@@ -125,7 +118,4 @@
 <div id="table-region">
   {% include "data/_programmes_table.html" %}
 </div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{% endblock %}

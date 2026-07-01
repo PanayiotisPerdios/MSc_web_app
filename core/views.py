@@ -7,5 +7,5 @@ def is_staff_user(user):
 
 @login_required
 @user_passes_test(is_staff_user)
-def base(request):
-    return render(request, "base.html")
+def dashboard(request):
+    return render(request, "dashboard.html")

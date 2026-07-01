@@ -1,39 +1,20 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MSc Deadlines — Scraper</title>
 
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+{% block title %}MSc Deadlines — Scraper{% endblock %}
 
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/sse.js"></script>
+{% block extra_head %}
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/sse.js"></script>
+{% endblock %}
 
-  <link rel="stylesheet" href="{% static 'core/css/global.css' %}">
-  <link rel="stylesheet" href="{% static 'core/css/scraper.css' %}">
-</head>
-<body>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core/css/scraper.css' %}">
+{% endblock %}
 
-<nav class="navbar navbar-light sticky-top">
-  <div class="navbar-brand">
-    MSc Deadlines <span>— Study in Greece</span>
-  </div>
-  <div class="navbar-right">
-    <small class="text-muted">{{ user.username }}</small>
-    <form method="post" action="{% url 'logout' %}" class="m-0">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
-    </form>
-  </div>
-</nav>
-
+{% block content %}
 <form id="scraper-form" hx-post="{% url 'post_scraper' %}" hx-target="#status-region" hx-swap="innerHTML" hx-indicator="#run-indicator">
-
   {% csrf_token %}
-
   <div class="controls">
     <div class="field">
       <label>Model</label>
@@ -41,63 +22,78 @@
         <option value="openai/gpt-4.1-nano">GPT-4.1 nano</option>
       </select>
     </div>
-
     <div class="field">
       <label>Workers</label>
-      <input type="number" class="form-control" name="workers" value="3" style="width:70px">
+      <input type="number" class="form-control" name="workers" value="3" min="1" max="10" step="1" required style="width:70px">
     </div>
-
     <div class="field">
       <label>Limit</label>
-      <input type="number" class="form-control" name="limit" placeholder="all" style="width:70px">
+      <input type="number" class="form-control" name="limit" placeholder="all" min="1" step="1" style="width:70px">
     </div>
-
     <div class="field">
       <label>Offset</label>
-      <input type="number" class="form-control" name="offset" value="0" style="width:70px">
+      <input type="number" class="form-control" name="offset" value="0" min="0" step="1" style="width:70px">
     </div>
-
     <div class="field">
       <label>IDs (comma-separated)</label>
-      <input type="text" class="form-control" name="ids" placeholder="e.g. 1,2,3" style="width:160px">
+      <input type="text" class="form-control" name="ids" placeholder="e.g. 1,2,3"
+             pattern="^\s*\d+(\s*,\s*\d+)*\s*$"
+             title="Comma-separated positive numbers only, e.g. 1,2,3"
+             style="width:160px">
     </div>
-
     <div class="form-check">
       <input type="checkbox" class="form-check-input" name="resume" id="resume">
       <label class="form-check-label" for="resume">Resume</label>
     </div>
-
     <div class="form-check">
       <input type="checkbox" class="form-check-input" name="pass2_only" id="pass2_only">
       <label class="form-check-label" for="pass2_only">Pass 2 only</label>
     </div>
-
     <div class="form-check">
       <input type="checkbox" class="form-check-input" name="include_archived" id="include_archived">
       <label class="form-check-label" for="include_archived">Include archived</label>
     </div>
-
     <div class="form-check">
       <input type="checkbox" class="form-check-input" name="missing_only" id="missing_only">
       <label class="form-check-label" for="missing_only">Missing only</label>
     </div>
 
-    <button type="submit" class="run-btn" id="run-btn">
-      ▶ Run Scraper
-    </button>
+    <div class="form-check">
+      <input type="checkbox" class="form-check-input" name="clean" id="clean" title="Ignore all cached pass1/pass2/results data and start fully fresh">
+      <label class="form-check-label" for="clean">Clean run</label>
+    </div>
 
+    <button type="submit" class="run-btn" id="run-btn">▶ Run Scraper</button>
     <span class="htmx-indicator" id="run-indicator" style="font-size:12px;color:#aaa;margin-left:8px">
       Starting…
     </span>
+    <span id="run-timer" style="font-size:12px;color:#aaa;margin-left:8px"></span>
   </div>
+  
 </form>
+
+<button type="button" class="btn-stop" id="stop-btn"
+        hx-post="{% url 'scraper_stop' %}"
+        hx-target="#status-region"
+        hx-swap="innerHTML"
+        hx-confirm="Stop the running scraper? Progress made so far will still be saved."
+        style="display:none">
+  ■ Stop
+</button>
+
+
+
+<div class="log-hdr">
+  <label style="font-size:12px;margin-right:12px">
+    <input type="checkbox" id="hide-noise"> Hide noise
+  </label>
+</div>
 
 <div id="log-section" style="display:none">
   <div class="log-hdr">
     <h3>Log</h3>
     <button class="log-clear" onclick="document.getElementById('log-box').innerHTML=''">Clear</button>
   </div>
-
   <div id="log-box" hx-ext="sse" sse-connect="{% url 'scraper_log_stream' %}" sse-swap="message" hx-swap="beforeend">
   </div>
 </div>
@@ -107,9 +103,8 @@
     {% include "data/_scraper_status.html" with state=state %}
   {% endif %}
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script src="{% static 'core/js/scraper.js' %}"></script>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{% endblock %}

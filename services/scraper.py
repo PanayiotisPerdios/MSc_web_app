@@ -62,6 +62,11 @@ _sitemap_cache: dict = {}
 
 DOMAIN_ANNOUNCEMENT_HUBS = {
     "eap.gr": "https://www.eap.gr/en/tag/invitation-en/",
+    "bme.web.auth.gr": "https://bme.web.auth.gr/en/announcements-news/",
+    "uav.ece.auth.gr": "https://uav.ece.auth.gr/en/announcements/",
+    "msc-biomed.edu.gr": "https://msc-biomed.edu.gr/announcements/",
+    "mscie.hmu.gr": "https://mscie.hmu.gr/news/",
+    "migromedia.gr": "https://www.migromedia.gr/newsandevents"
 }
 
 _hub_cache: dict = {}
@@ -101,6 +106,12 @@ CONTEXT_KEYWORDS = [
     "until", "by", "due", "from", "start", "begin", "end",
     "εγγραφ", "registration", "admission", "call", "πρόσκλ", "προσκλ",
     "ανακοίν", "ανακοιν", "apply", "intake", "semester",
+]
+
+STRONG_DEADLINE_KEYWORDS = [
+    "deadline", "προθεσμ", "submit", "υποβολ", "close", "closing",
+    "έως", "εως", "μέχρι", "until", "due", "λήξη", "λήγει",
+    "period", "περίοδ", "περιοδ", "window",
 ]
 
 # Common admissions/application paths
@@ -180,6 +191,7 @@ PDF_KEYWORDS = [
     "παράταση προθεσμίας υποβολής αιτήσεων",
     "νέα παράταση προθεσμίας υποβολής αιτήσεων",
     "πρόσκληση εκδήλωσης ενδιαφέροντος",
+    "πρόσκληση", "προσκληση",
 
     # Greeklish
     "aitisi", "aithsh", "aithseis", "eggrafi", "eggrafes",
@@ -197,9 +209,9 @@ ANNOUNCEMENT_KEYWORDS = [
     # Greek
     "προκήρυξη", "προκηρυξη", "παράταση", "παραταση",
     "αιτήσεις", "αιτησεις", "υποβολή αίτησης", "υποβολη αιτησης",
-    "ανακοίνωση", "ανακοινωση",
+    "ανακοίνωση", "ανακοινωση", "πρόσκληση", "προσκληση",
     # Greeklish
-    "prokiriksi", "prokiryxi", "paratasi", "anakoinosi",
+    "prokiriksi", "prokiryxi", "paratasi", "anakoinosi", "prosklisi",
 ]
 
 DEADLINE_CSS_CLASSES = [
@@ -306,7 +318,7 @@ Return ONLY a valid JSON object. No markdown, no code fences, no explanation.
 
 {
   "application_open_date": "Date when applications open, any format found, or null",
-  "application_deadline": "Application deadline / closing date. Look for dates in ANY format including prose sentences like 'submit by 31st August 2026' or 'applications accepted until March 2026'. If multiple rounds, list all as one string. Or null.",
+  "application_deadline": "Application deadline / closing date. Look for dates in ANY format including prose sentences like 'submit by [day] [Month] [year]' or 'applications accepted until [Month]'. If multiple rounds, list all as one string. Or null.",
   "intake_semester": "e.g. Fall 2025, September 2025, Academic Year 2025-26, or null",
   "apply_button_url": "The full absolute URL of any Apply / Apply Now / Apply Here / Start Application / Admissions button or link. Resolve relative URLs using the page domain. Return null if none found.",
   "has_dates_on_page": true,
@@ -324,6 +336,8 @@ Rules:
 - Today is June 2026. Only extract dates that are in 2026 or later. Ignore any dates from 2025 or earlier.
 - When multiple dates exist, prioritise dates labelled as application open, deadline, closing date, or submission — NOT results announcements, events, or publication dates.
 - Ignore the article's own posted/published date (shown near the title) unless it's the only date on the page. If the body text gives its own date or date range for applications, use that instead.
+- NEVER invent or guess a year for a date. If the page states a deadline without an explicit year (e.g. "between February 1 and June 30"), only attach a year if it is given unambiguously elsewhere on the page (e.g. an academic-year heading like "2026-27" or "Academic Year 2026"). Otherwise return the date exactly as written, with no year attached.
+- Ignore any date that appears next to "ΦΕΚ" or "FEK" (Government Gazette / Official Journal citation, e.g. "ΦΕΚ 4175/τ.Β΄/31.07.2025" or "FEK 4175/B/31.07.2025"). These are legal-publication references for regulations, never admissions dates — do not extract them and never adjust their year.
 """
 
 PASS2_PROMPT = """
@@ -332,7 +346,7 @@ Return ONLY a valid JSON object. No markdown, no code fences, no explanation.
 
 {
   "application_open_date": "Date when applications open or null",
-  "application_deadline": "Application deadline. Look for dates in ANY format including prose sentences like 'submit by 31st August 2026' or 'applications accepted until March 2026'. Or null.",
+  "application_deadline": "Application deadline. Look for dates in ANY format including prose sentences like 'submit by [day] [Month] [year]' or 'applications accepted until [Month]'. Or null.",  "intake_semester": "e.g. Fall 2025 or null",
   "intake_semester": "e.g. Fall 2025 or null",
   "portal_name": "Portal system name: Apply Texas / Slate / Embark / Common App / custom / or null",
   "requires_login": true,
@@ -347,6 +361,8 @@ Rules:
 - Extract dates even when written in plain sentences or paragraphs, not just labelled fields.
 - Today is June 2026. Only extract dates that are in 2026 or later. Ignore any dates from 2025 or earlier.
 - When multiple dates exist, prioritise dates labelled as application open, deadline, closing date, or submission — NOT results announcements, events, or publication dates.
+- NEVER invent or guess a year for a date. If the page states a deadline without an explicit year, only attach a year if it is given unambiguously elsewhere on the page (e.g. an academic-year heading like "2026-27"). Otherwise return the date exactly as written, with no year attached.
+- Ignore any date that appears next to "ΦΕΚ" or "FEK" (Government Gazette / Official Journal citation). These are legal-publication references for regulations, never admissions dates — do not extract them and never adjust their year.
 
 """
 
@@ -813,7 +829,28 @@ def fetch_sitemap_urls(base_url: str) -> list:
         log.warning(f"fetch_sitemap_urls failed for {base_url}: {e}")
         _sitemap_cache[sitemap_url] = []
         return []
-    
+
+_GREEK_LOOKALIKE_TO_LATIN = str.maketrans({
+    "Α": "A", "α": "a",
+    "Β": "B",
+    "Ε": "E",
+    "Ζ": "Z",
+    "Η": "H",
+    "Ι": "I", "ι": "i",
+    "Κ": "K",
+    "Μ": "M",
+    "Ν": "N",
+    "Ο": "O", "ο": "o",
+    "Ρ": "P",
+    "Τ": "T",
+    "Υ": "Y", "υ": "y",
+    "Χ": "X", "χ": "x",
+})
+
+
+def _delookalike(text: str) -> str:
+    return text.translate(_GREEK_LOOKALIKE_TO_LATIN)
+
 def find_pdf_links(html: str, base_url: str) -> list:
     keywords = PDF_KEYWORDS
     try:
@@ -825,7 +862,10 @@ def find_pdf_links(html: str, base_url: str) -> list:
                 absolute = urljoin(base_url, href)
                 link_text = a.get_text().lower()
                 href_lower = href.lower()
-                if any(k in href_lower or k in link_text for k in keywords):
+                link_text_norm = _delookalike(link_text)
+                href_norm = _delookalike(href_lower)
+                if any(k in href_lower or k in link_text or k in href_norm or k in link_text_norm
+                       for k in keywords):
                     links.append(absolute)
         return links[:5]
     except Exception as e:
@@ -838,10 +878,11 @@ def find_announcement_links(html: str, base_url: str) -> list:
         links = []
         for a in soup.find_all("a", href=True):
             text = a.get_text().strip().lower()
+            text_norm = _delookalike(text)
             href = a["href"].strip()
             if not href or href.startswith("#"):
                 continue
-            if any(k in text for k in ANNOUNCEMENT_KEYWORDS):
+            if any(k in text or k in text_norm for k in ANNOUNCEMENT_KEYWORDS):
                 absolute = urljoin(base_url, href)
                 if absolute not in links:
                     links.append(absolute)
@@ -888,6 +929,12 @@ def extract_docx_text(url: str) -> str | None:
         log.warning(f"extract_docx_text failed for {url}: {e}")
         return None
 
+def _looks_like_bare_post_date_line(line: str, raw_date: str) -> bool:
+    if len(list(DATE_RE.finditer(line))) > 1:
+        return False
+    remainder = line.strip().replace(raw_date, "", 1).strip(" -–—\t")
+    return len(remainder) <= 25
+
 def extract_dates_with_context(text: str, source_label: str) -> list[dict]:
     results = []
     seen_dates = set()
@@ -907,6 +954,10 @@ def extract_dates_with_context(text: str, source_label: str) -> list[dict]:
 
             ctx_lower = context.lower()
             has_keyword = any(k in ctx_lower for k in CONTEXT_KEYWORDS)
+            has_strong_keyword = any(k in ctx_lower for k in STRONG_DEADLINE_KEYWORDS)
+
+            if not has_strong_keyword and _looks_like_bare_post_date_line(line, raw):
+                continue
 
             results.append({
                 "raw": raw,
@@ -1465,6 +1516,15 @@ def merge(programmes, pass1, pass2):
     return rows
 
 
+def clear_results_cache():
+    for path in (PASS1_JSON, PASS2_JSON, RESULTS_JSON, RESULTS_CSV, ERRORS_JSON):
+        try:
+            if path.exists():
+                path.unlink()
+                log.info(f"Cleared {path}")
+        except Exception as e:
+            log.warning(f"Could not clear {path}: {e}")
+
 def export(rows):
     with open(RESULTS_JSON, "w", encoding="utf-8") as f:
         json.dump(rows, f, indent=2, ensure_ascii=False)
@@ -1547,13 +1607,26 @@ def parse_args():
     p.add_argument("--offset", type=int, default=0)
     p.add_argument("--missing-only", action="store_true")
     p.add_argument("--ids", type=str, default=None)
+    p.add_argument("--clean", action="store_true")
     p.set_defaults(active_only=True)
     return p.parse_args()
 
+def request_shutdown():
+    global _shutdown
+    _shutdown = True
+    log.info("Shutdown requested via web UI. Finishing in-flight tasks and saving progress...")
+
 def run_scraper(args):
+    global _shutdown
+    _shutdown = False          
+
 
     _reset_log_file()
 
+    if getattr(args, "clean", False):
+        log.info("Clean run requested — clearing cached pass1/pass2/results state")
+        clear_results_cache()
+    
     #api_data = fetch_programmes_data(args.api_url)
     #all_programmes = load_programmes_from_api(api_data, args.active_only)
     all_programmes = load_programmes_from_db(args.active_only)    

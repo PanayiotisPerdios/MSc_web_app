@@ -1,4 +1,5 @@
 import json
+import re
 import os
 import time
 import threading
@@ -12,7 +13,7 @@ from django.http import HttpResponse, JsonResponse, StreamingHttpResponse
 from django.views.decorators.http import require_POST, require_GET
 from data.models import Programme
 from django.shortcuts import render
-from services.scraper import run_scraper, LOG_FILE
+from services.scraper import run_scraper, LOG_FILE, request_shutdown
 from services.services import fetch_programmes_data, sync_programmes
 from data.forms import ScraperRunForm, ProgrammeFilterForm
 from django.core.paginator import Paginator
@@ -22,7 +23,6 @@ def is_staff_user(user):
     return user.is_authenticated and user.is_staff
 
 def staff_required(view_func):
-    """Single decorator combining login + staff check."""
     return login_required(user_passes_test(is_staff_user)(view_func))
 
 _scraper_state = {"running": False, "result": None, "error": None}
@@ -145,14 +145,38 @@ def scraper_view(request):
 @staff_required
 @require_GET
 def scraper_status(request):
-    return render(request, "data/_scraper_status.html", {"state": _scraper_state})
+    return render(request, "data/_scraper_status.html", {"state": _scraper_state, "debug_running": _scraper_state["running"],})
+
+_NOISE_PATTERNS = (
+    "starting scraping with playwright",
+    "content scraped",
+)
 
 
 def _log_line_html(line):
-    cls = ("log-created" if line.startswith("CREATED") else
-           "log-updated" if line.startswith("UPDATED") else
-           "log-skipped" if line.startswith("SKIPPED") else
-           "log-error" if "error" in line.lower() else "")
+    lower = line.lower()
+
+    if line.startswith("CREATED"):
+        cls = "log-created"
+    elif line.startswith("UPDATED"):
+        cls = "log-updated"
+    elif line.startswith("SKIPPED"):
+        cls = "log-skipped"
+    elif "[warning]" in lower or "error" in lower:
+        cls = "log-error"
+    elif re.search(r"\[pass[12] \d+/\d+\]", lower):
+        cls = "log-progress"
+    elif "found dates" in lower or "found in document" in lower or "found in announcement" in lower or "recovered json" in lower:
+        cls = "log-found"
+    elif "dates found:" in lower or re.match(r"^\d+\.\s+\"", line.strip()):
+        cls = "log-detail"
+    elif "domain cap reached" in lower or "giving up" in lower:
+        cls = "log-warn-soft"
+    elif any(p in lower for p in _NOISE_PATTERNS):
+        cls = "log-noise"
+    else:
+        cls = ""
+
     return f'<div class="{cls}">{line}</div>'
 
 @staff_required
@@ -190,6 +214,16 @@ def scraper_log_stream(request):
     response["Cache-Control"] = "no-cache"
     response["X-Accel-Buffering"] = "no"
     return response
+
+@staff_required
+@require_POST
+def scraper_stop(request):
+    if not _scraper_state["running"]:
+        return render(request, "data/_scraper_status.html", {"state": _scraper_state}, status=409)
+
+    request_shutdown()
+    _scraper_state["stopping"] = True
+    return render(request, "data/_scraper_status.html", {"state": _scraper_state})
 
 @staff_required
 @require_POST

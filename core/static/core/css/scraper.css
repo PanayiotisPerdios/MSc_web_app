@@ -283,6 +283,32 @@
   color: #fff;
 }
 
+.btn-stop {
+  padding: 8px 20px;
+  margin-left: 10px;
+  border: none;
+  border-radius: 6px;
+  background: #dc3545;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+
+.btn-stop:hover {
+  background: #c82333;
+}
+
+.btn-stop:active {
+  transform: scale(0.97);
+}
+
+.btn-stop:disabled {
+  background: #e9a5ab;
+  cursor: not-allowed;
+}
+
 .results-filter {
   padding: 5px 10px;
   border: 1px solid var(--color-border);
@@ -416,3 +442,46 @@
 .apply-link:hover {
   text-decoration: underline;
 }
+
+#log-box .log-noise { 
+  color: #999; 
+  font-size: 11px; 
+}
+
+#log-box .log-progress { 
+  color: #1d4ed8; 
+  font-weight: 600; 
+}
+
+#log-box .log-found { 
+  color: #16a34a; 
+  font-weight: 600; 
+}
+
+#log-box .log-detail { 
+  color: #555; 
+  padding-left: 16px; 
+  font-size: 12px; 
+}
+
+#log-box .log-warn-soft {
+   color: #b45309;
+}
+
+#log-box .log-error { 
+  color: #dc2626; 
+}
+
+#log-box .log-created { 
+  color: #16a34a; 
+}
+
+#log-box .log-skipped { 
+  color: #999; 
+}
+
+#log-box.hide-noise .log-noise { 
+  display: none; 
+}
+
+
