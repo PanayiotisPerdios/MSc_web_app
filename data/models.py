@@ -32,8 +32,8 @@ class Programme(models.Model):
         SKIPPED = "skipped", "Skipped"
 
     id = models.IntegerField(primary_key=True)
-    name_en = models.CharField(max_length=100)
-    name_gr = models.CharField(max_length=100)
+    name_en = models.CharField(max_length=200)
+    name_gr = models.CharField(max_length=200)
     university = models.CharField(max_length=100)
     university_gr = models.CharField(max_length=100)
     department = models.CharField(max_length=100)
@@ -42,15 +42,15 @@ class Programme(models.Model):
     languages = models.JSONField(default=list)
     ects = models.IntegerField(null=True, blank=True)
     semesters = models.IntegerField(null=True, blank=True)
-    tuition = models.CharField(max_length=30, blank=True, default="")
+    tuition = models.CharField(max_length=100, blank=True, default="")
     study_modes = models.JSONField(default=list)
     email = models.EmailField(max_length=50,  blank=True, default="")
     scholarship = models.BooleanField(default=False)
-    university_image_url = models.URLField(blank=True, default="")
-    programme_url = models.URLField(blank=True, default="")
+    university_image_url = models.URLField(max_length=500, blank=True, default="")
+    programme_url = models.URLField(max_length=500, blank=True, default="")
     open_date = models.CharField(max_length=200, blank=True, default="")
     deadline = models.CharField(max_length=200, blank=True, default="")
-    intake = models.CharField(max_length=30)
+    intake = models.CharField(max_length=100, blank=True, default="")
     is_archived = models.BooleanField(default=False)
     apply_url = models.URLField(max_length=1000, blank=True, default="")
     application_status = models.CharField(max_length=20, choices=Status.choices, default=Status.NO_DATE)
@@ -62,7 +62,7 @@ class Programme(models.Model):
     scrape_status = models.CharField(max_length=20, choices=ScrapeStatus.choices, default=ScrapeStatus.SKIPPED)
     pass2_status = models.CharField(max_length=20, choices=Pass2Status.choices, default=Pass2Status.SKIPPED)    
     scraped_at = models.DateTimeField(null=True, blank=True)
-    atsig_url = models.URLField(blank=True, default="")
+    atsig_url = models.URLField(max_length=500, blank=True, default="")
 
 
     def __str__(self):

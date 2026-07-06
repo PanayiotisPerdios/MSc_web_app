@@ -45,14 +45,16 @@ document.getElementById("scraper-form").addEventListener("htmx:beforeRequest", (
   btn.disabled  = true;
   btn.className = "run-btn running";
   btn.textContent = "⟳ Running…";
+  document.getElementById("stop-btn").style.display = "inline-block";
   startTimer();
 });
 
 document.body.addEventListener("htmx:afterSwap", (e) => {
-  if (e.detail.target.id === "status-region") {
+  if (e.detail.target.closest && e.detail.target.closest("#status-region")) {
     const running = document.querySelector("#status-region .scraper-running");
     if (!running) {
       resetRunButton();
+      document.getElementById("stop-btn").style.display = "none";
       stopTimer();
     }
   }
@@ -84,12 +86,6 @@ document.getElementById("scraper-form").addEventListener("submit", (e) => {
 
 document.getElementById("clean").addEventListener("change", (e) => {
   const resumeBox = document.getElementById("resume");
-  resumeBox.disabled = e.target.checked;
-  if (e.target.checked) resumeBox.checked = false;
-});
-
-document.getElementById("clean").addEventListener("change", (e) => {
-  const resumeBox = document.getElementById("resume");
   if (e.target.checked) {
     resumeBox.checked = false;
     resumeBox.disabled = true;
@@ -98,6 +94,7 @@ document.getElementById("clean").addEventListener("change", (e) => {
   }
 });
 
+
 document.getElementById("resume").addEventListener("change", (e) => {
   const cleanBox = document.getElementById("clean");
   if (e.target.checked) {
@@ -105,28 +102,6 @@ document.getElementById("resume").addEventListener("change", (e) => {
     cleanBox.disabled = true;
   } else {
     cleanBox.disabled = false;
-  }
-});
-
-document.getElementById("scraper-form").addEventListener("htmx:beforeRequest", () => {
-  document.getElementById("log-section").style.display = "block";
-  document.getElementById("log-box").innerHTML = "";
-  const btn = document.getElementById("run-btn");
-  btn.disabled  = true;
-  btn.className = "run-btn running";
-  btn.textContent = "⟳ Running…";
-  document.getElementById("stop-btn").style.display = "inline-block";  // NEW
-  startTimer();
-});
-
-document.body.addEventListener("htmx:afterSwap", (e) => {
-  if (e.detail.target.id === "status-region") {
-    const running = document.querySelector("#status-region .scraper-running");
-    if (!running) {
-      resetRunButton();
-      document.getElementById("stop-btn").style.display = "none";  // NEW
-      stopTimer();
-    }
   }
 });
 

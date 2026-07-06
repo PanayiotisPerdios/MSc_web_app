@@ -69,7 +69,7 @@ DOMAIN_ANNOUNCEMENT_HUBS = {
     "migromedia.gr": "https://www.migromedia.gr/newsandevents"
 }
 
-_hub_cache: dict = {}
+_hub_cache: dict = {}   
 _hub_cache_lock = threading.Lock()
 
 # ---- date regex patterns ----
@@ -365,6 +365,12 @@ Rules:
 - Ignore any date that appears next to "ΦΕΚ" or "FEK" (Government Gazette / Official Journal citation). These are legal-publication references for regulations, never admissions dates — do not extract them and never adjust their year.
 
 """
+
+def _rel(path: Path) -> str:
+    try:
+        return str(path.relative_to(OUTPUT_DIR.parent))
+    except ValueError:
+        return path.name
 
 def _reset_log_file():
 
@@ -737,10 +743,10 @@ def try_subpages(base_url: str, prompt: str, graph_config: dict, SmartScraperGra
         if url == base_url:
             continue
         if total_count >= MAX_RETRIES_PER_DOMAIN:
-            log.info(f"  Domain cap reached for {base}, stopping")
+            log.info(f" Domain cap reached for {base}, stopping")
             break
         if consecutive_failures >= 5:
-            log.info(f"  Too many consecutive failures for {base}, giving up")
+            log.info(f" Too many consecutive failures for {base}, giving up")
             break
 
         is_sitemap_url = url in sitemap_urls
@@ -749,7 +755,7 @@ def try_subpages(base_url: str, prompt: str, graph_config: dict, SmartScraperGra
         if not is_sitemap_url and suffix_count >= MAX_SUFFIX_ATTEMPTS:
             continue
 
-        log.info(f"  Trying sub-page: {url}")
+        log.info(f" Trying sub-page: {url}")
         result = scrape_url(url, prompt, graph_config, SmartScraperGraph)
 
         if is_sitemap_url:
@@ -759,7 +765,7 @@ def try_subpages(base_url: str, prompt: str, graph_config: dict, SmartScraperGra
         total_count += 1
 
         if result.get("status") == "ok" and result.get("has_dates_on_page") is True:
-            log.info(f"  Found dates on sub-page: {url}")
+            log.info(f" Found dates on sub-page: {url}")
             result["found_on_subpage"] = url
             return result
         if result.get("status") == "error":
@@ -1085,7 +1091,7 @@ def worker_pass1(args):
                 result["scraped_at"] = now_utc()
                 result["found_in_announcement"] = hub_url
                 return result
-            log.info(f"  Domain hub: {hub_url}")
+            log.info(f" Domain hub: {hub_url}")
             hub_html = fetch_html(hub_url)
             hub_url_to_scrape = hub_url
             if hub_html:
@@ -1113,7 +1119,7 @@ def worker_pass1(args):
         dates_to_use = []
 
     if dates_to_use:
-        log.info(f"  Found {len(dates_to_use)} valid dates, building structured list")
+        log.info(f" Found {len(dates_to_use)} valid dates, building structured list")
         date_list = build_date_list(prog, dates_to_use)
         result = scrape_url(f"data:text/plain,{date_list}", prompt, graph_config, SmartScraperGraph)
         if not (result.get("has_dates_on_page") is True and has_current_dates(result)):
@@ -1521,21 +1527,21 @@ def clear_results_cache():
         try:
             if path.exists():
                 path.unlink()
-                log.info(f"Cleared {path}")
+                log.info(f"Cleared {_rel(path)}")
         except Exception as e:
             log.warning(f"Could not clear {path}: {e}")
 
 def export(rows):
     with open(RESULTS_JSON, "w", encoding="utf-8") as f:
         json.dump(rows, f, indent=2, ensure_ascii=False)
-    log.info(f"JSON -> {RESULTS_JSON}")
+    log.info(f"JSON -> {_rel(RESULTS_JSON)}")
 
     if rows:
         with open(RESULTS_CSV, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=rows[0].keys())
             writer.writeheader()
             writer.writerows(rows)
-        log.info(f"CSV  -> {RESULTS_CSV}")
+        log.info(f"CSV  -> {_rel(RESULTS_CSV)}")
 
     total   = len(rows)
     found   = sum(1 for r in rows if r["found"] == "yes")
@@ -1577,7 +1583,7 @@ def save_json(data, path):
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
     tmp.replace(path)  # atomic on POSIX
-    log.info(f"Saved {len(data)} records -> {path}")
+    log.info(f"Saved {len(data)} records -> {_rel(path)}")
 
 def save_errors(pass1_results, prog_map):
     errors = [
@@ -1592,7 +1598,7 @@ def save_errors(pass1_results, prog_map):
     ]
     with open(ERRORS_JSON, "w", encoding="utf-8") as f:
         json.dump(errors, f, indent=2, ensure_ascii=False)
-    log.info(f"Errors -> {ERRORS_JSON} ({len(errors)} records)")
+    log.info(f"Errors -> {_rel(ERRORS_JSON)} ({len(errors)} records)")
 
 # Command-line options
 def parse_args():
