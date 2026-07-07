@@ -33,6 +33,7 @@ free_proxy==1.2.0
 frozenlist==1.8.0
 fsspec==2026.6.0
 greenlet==3.5.1
+gunicorn==26.0.0
 h11==0.16.0
 h2==4.3.0
 hf-xet==1.5.1
@@ -151,7 +152,10 @@ uuid_utils==0.16.1
 wcwidth==0.8.1
 webencodings==0.5.1
 websockets==15.0.1
+whitenoise==6.12.0
 xxhash==3.7.0
 yarg==0.1.9
 yarl==1.24.2
+zope.event==6.2
+zope.interface==8.5
 zstandard==0.25.0

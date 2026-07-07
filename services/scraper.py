@@ -304,8 +304,9 @@ def _handle_signal(signum, frame):
     _shutdown = True
     log.info("Shutdown requested. Saving progress...")
 
-signal.signal(signal.SIGINT,  _handle_signal)
-signal.signal(signal.SIGTERM, _handle_signal)
+if threading.current_thread() is threading.main_thread():
+    signal.signal(signal.SIGINT, _handle_signal)
+    signal.signal(signal.SIGTERM, _handle_signal)
 
 def now_utc() -> str:
     return datetime.now(timezone.utc).isoformat()
