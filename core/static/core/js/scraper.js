@@ -60,6 +60,13 @@ document.body.addEventListener("htmx:afterSwap", (e) => {
   }
 });
 
+document.getElementById("stop-btn").addEventListener("htmx:responseError", (e) => {
+  resetRunButton();
+  clearTimer();
+  document.getElementById("stop-btn").style.display = "none";
+  document.getElementById("status-region").innerHTML = e.detail.xhr.responseText;
+});
+
 document.getElementById("scraper-form").addEventListener("htmx:responseError", (e) => {
   resetRunButton();
   clearTimer();

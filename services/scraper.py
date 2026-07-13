@@ -6,6 +6,7 @@ Outputs are written to the results/ folder and can be loaded
 by the dashboard.
 """
 
+from zoneinfo import ZoneInfo
 import json
 import time
 import csv
@@ -219,6 +220,8 @@ DEADLINE_CSS_CLASSES = [
     "closing-date", "submission-deadline",
 ]
 
+
+
 def save_results_to_db(rows):
     for row in rows:
         try:
@@ -279,16 +282,23 @@ def save_results_to_db(rows):
 
 # Logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%H:%M:%S",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),
-    ],
-)
+LOCAL_TZ = ZoneInfo("Europe/Athens")
+
+class TZFormatter(logging.Formatter):
+    def converter(self, timestamp):
+        return datetime.fromtimestamp(timestamp, LOCAL_TZ).timetuple()
+
+_log_handlers = [
+    logging.StreamHandler(sys.stdout),
+    logging.FileHandler(LOG_FILE, encoding="utf-8"),
+]
+_formatter = TZFormatter("%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
+for _h in _log_handlers:
+    _h.setFormatter(_formatter)
+
+logging.basicConfig(level=logging.INFO, handlers=_log_handlers)
 log = logging.getLogger(__name__)
+
 logging.getLogger("scrapegraphai").setLevel(logging.ERROR)
 logging.getLogger("playwright").setLevel(logging.ERROR)
 logging.getLogger("httpx").setLevel(logging.ERROR)
@@ -1665,7 +1675,7 @@ def run_scraper(args):
         programmes = [p for p in programmes if p["id"] not in found_ids]
 
     if args.ids:
-        target_ids = set(args.ids.split(","))
+        target_ids = {int(x.strip()) for x in args.ids.split(",") if x.strip()}
         # Only wipe pass1 cache for target IDs when actually re-running pass1
         if not args.pass2_only:
             existing_p1 = [r for r in existing_p1 if r.get("prog_id") not in target_ids]

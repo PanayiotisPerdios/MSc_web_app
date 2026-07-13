@@ -19,4 +19,4 @@ COPY . .
 
 RUN mkdir -p /app/staticfiles /app/services/results
 
-EXPOSE 8000
+EXPOSE 8000 

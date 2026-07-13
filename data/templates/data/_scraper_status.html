@@ -17,24 +17,24 @@
 {% elif state.result %}
 {% with r=state.result %}
 <div id="status-bar" class="visible done">
-  <span class="done">✓ Done — {{ r.scope_total|default:r.total|default:0 }} programmes processed</span>
+  <span class="done">✓ Done — {{ r.scope_total|default_if_none:r.total|default_if_none:0 }} programmes processed</span>
 </div>
 
 <div id="result-stats" class="visible">
   <div class="rstat">
-    <div class="rstat-n">{{ r.scope_total|default:r.total|default:"—" }}</div>
+    <div class="rstat-n">{{ r.scope_total|default_if_none:r.total|default_if_none:"0" }}</div>
     <div class="rstat-l">Total scraped</div>
   </div>
   <div class="rstat">
-    <div class="rstat-n g">{{ r.scope_found|default:r.created|default:"—" }}</div>
+    <div class="rstat-n g">{{ r.scope_found|default_if_none:r.created|default_if_none:"0" }}</div>
     <div class="rstat-l">Dates found</div>
   </div>
   <div class="rstat">
-    <div class="rstat-n o">{{ r.scope_skipped|default:r.skipped|default:"—" }}</div>
+    <div class="rstat-n o">{{ r.scope_skipped|default_if_none:r.skipped|default_if_none:"0" }}</div>
     <div class="rstat-l">Skipped</div>
   </div>
   <div class="rstat">
-    <div class="rstat-n r">{{ r.scope_errors|default:"0" }}</div>
+    <div class="rstat-n r">{{ r.scope_errors|default_if_none:"0" }}</div>
     <div class="rstat-l">Errors</div>
   </div>
 </div>
