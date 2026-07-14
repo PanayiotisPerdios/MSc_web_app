@@ -1,4 +1,4 @@
-# MSc Application Dates Dashboard
+# MSc Application Dates Scraper Dashboard
  
 A Django application that scrapes Greek (and other) university MSc programme websites for application open dates, deadlines, and apply links, then presents the results in a searchable staff dashboard. Scraping is powered by an LLM (via ScrapeGraphAI) with Playwright/Chromium for rendering and pdfplumber/python-docx for parsing PDF and Word attachments.
  
